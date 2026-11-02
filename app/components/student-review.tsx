@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { apiRequest } from "../lib/api";
 import { useSession } from "./session-provider";
 import { FriendlyIcon } from "./friendly-icon";
@@ -20,7 +21,7 @@ export function StudentReviewInbox() {
  const {activeClass,user}=useSession();
  const list=useApiRows<StudentSummary>(activeClass?"/student-reviews?classroom_id="+activeClass:null);
  const [search,setSearch]=useState(""),[filter,setFilter]=useState("all"),[advanced,setAdvanced]=useState(false);
- const visible=list.rows.filter(s=>(s.name+" "+s.username).toLowerCase().includes(search.toLowerCase())&&(filter==="all"||filter==="filled"&&s.lkpd.some(l=>l.notes_filled>0||l.group_status!=="not_started"||l.reflection_filled)||filter==="pending"&&s.lkpd.some(l=>l.notes_filled>l.notes_reviewed||l.group_status==="submitted"||l.reflection_filled&&!l.reflection_reviewed)));
+ const visible=list.rows.filter(s=>(s.name+" "+s.username).toLowerCase().includes(search.toLowerCase())&&(filter==="all"||filter==="filled"&&s.lkpd.some(l=>l.notes_filled>0||l.group_status!=="not_started"||l.reflection_filled)||filter==="pending"&&s.lkpd.some(l=>l.notes_filled>l.notes_reviewed||["submitted","partially_submitted"].includes(l.group_status)||l.reflection_filled&&!l.reflection_reviewed)));
  return <div className="lms-workspace"><div className="section-heading"><div><h2>Tinjauan belajar per murid</h2><p>Pilih nama murid untuk membaca catatan pribadi, melihat LKPD kelompoknya, dan memberi umpan balik.</p></div><button className="button secondary" onClick={()=>setAdvanced(v=>!v)}>{advanced?"Kembali ke daftar murid":"Tinjauan tugas / kuis lainnya"}</button></div>
  {advanced?<TeacherAssessment/>:<>
  {!activeClass&&<div className="soft-note">Akun guru belum ditugaskan ke kelas. Admin dapat menetapkannya melalui pengelolaan kelas.</div>}
@@ -34,8 +35,10 @@ export function StudentReviewInbox() {
  </div>;
 }
 export function StudentReviewDetail({studentId,classroomId}:{studentId:number;classroomId:number|null}) {
+ const query=useSearchParams();
  const {activeClass,user}=useSession();const classId=classroomId??activeClass;
  const [data,setData]=useState<Detail|null>(null),[topic,setTopic]=useState("0"),[loading,setLoading]=useState(true),[error,setError]=useState(""),[revision,setRevision]=useState(0);
+ useEffect(()=>{const meeting=Number(query.get("pertemuan"));setTopic(Number.isInteger(meeting)&&meeting>=1&&meeting<=4?String(meeting-1):"0");},[query,studentId,classId]);
  useEffect(()=>{let alive=true;const controller=new AbortController();if(!classId){setLoading(false);return;}setLoading(true);setError("");apiRequest<{data:Detail}>("/student-reviews/"+studentId+"?classroom_id="+classId,{signal:controller.signal}).then(r=>{if(alive){setData(r.data);setError("");}}).catch(e=>{if(alive)setError(errorMessage(e));}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;controller.abort();};},[studentId,classId,revision]);
  const reload=async()=>{setRevision(v=>v+1);};
  const saveNote=(saved:SavedNoteReview)=>setData(current=>current?{...current,notes:current.notes.map(note=>note.id===saved.id?{...note,feedback:saved.feedback,reviewed_at:saved.reviewed_at}:note)}:current);

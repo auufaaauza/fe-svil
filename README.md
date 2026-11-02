@@ -24,4 +24,4 @@ Tab kelas/mapel, tugas/proyek, kuis banyak soal, buku nilai, roster/pengumuman, 
 
 Pengaturan akun dan Kabar berada di header. Tab Kalender/Progres di ruang belajar/laporan terhubung ke API; siswa juga dapat membuka riwayat kelas lama. Guru/admin mengatur video LKPD di detail konten dan media materi pada formulir materi. Video YouTube memakai pemutar tertanam setelah tombol putar ditekan; audio memakai tautan HTTPS dan kontrol bawaan browser.
 
-Environment Vercel production: API_BACKEND_URL=https://api2.findmycareer.my.id. Nilai ini server-only. Rilis source dapat disiapkan melalui scripts/package-release.ps1; paket tidak berisi .env lokal, .next maupun node_modules. Pemeriksaan visual ponsel dan pengujian di domain hosting aktual tetap perlu dilakukan.
+Environment Vercel production: API_BACKEND_URL=https://api2.findmycareer.my.id. Nilai ini server-only. Unggah perubahan source dan redeploy Vercel setelah backend diperbarui. Jangan mengunggah .env lokal, .next atau node_modules. Pemeriksaan visual ponsel dan pengujian di domain hosting aktual tetap perlu dilakukan.

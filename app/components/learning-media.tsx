@@ -5,6 +5,7 @@ import { useSession } from "./session-provider";
 import { FriendlyIcon } from "./friendly-icon";
 import { Field, AsyncState, errorMessage } from "./lms-shared";
 import { QuestionVisual } from "./question-visual";
+import { parseQuestionVideo, type QuestionVideoMedia } from "../lib/question-media";
 
 export function YouTubePlayer({videoId,title,caption}:{videoId?:string|null;title:string;caption?:string|null}) {
  const [opened,setOpened]=useState(false);if(!videoId||!/^[A-Za-z0-9_-]{11}$/.test(videoId))return null;
@@ -18,10 +19,38 @@ export function AudioPlayer({url,title}:{url?:string|null;title:string}) {
 }
 export function LessonVideo({topic,phase}:{topic:number;phase:number}) {
  const {activeClass}=useSession();const [media,setMedia]=useState<{title:string;videoId:string|null;videoCaption:string|null}|null>(null),[error,setError]=useState("");
- useEffect(()=>{let alive=true;if(!activeClass)return;apiRequest<{data:NonNullable<typeof media>}>("/learning-modules/videos/"+topic+"?classroom_id="+activeClass).then(r=>{if(alive){setMedia(r.data);setError("");}}).catch(e=>{if(alive)setError(errorMessage(e));});return()=>{alive=false;};},[activeClass,topic]);
+ useEffect(()=>{let alive=true;if(!activeClass)return;apiRequest<{data:NonNullable<typeof media>}>("/learning-modules/videos/"+topic+"?classroom_id="+activeClass,{maxAgeMs:30000}).then(r=>{if(alive){setMedia(r.data);setError("");}}).catch(e=>{if(alive)setError(errorMessage(e));});return()=>{alive=false;};},[activeClass,topic]);
  return <>{media?.videoId?<YouTubePlayer key={media.videoId} videoId={media.videoId} title={media.title} caption={media.videoCaption}/>:<QuestionVisual topic={topic} phase={phase}/>} {error&&<p className="helper">Video belum termuat. Petunjuk belajar tetap bisa dibaca.</p>}</>;
 }
 type ModuleMedia={id:number;title:string;videoId:string|null;videoCaption:string|null;videoVersion:number;videoOverride:boolean};
+export type QuestionMediaField = {key:string;label:string;hint:string;phase:number;source?:string|null;video_url?:string|null;video?:QuestionVideoMedia|null;image_id?:string|null;image_url?:string|null;image_alt?:string|null;media_caption?:string|null};
+
+export function QuestionMediaVisual({field,topic}:{field:QuestionMediaField;topic:number}) {
+ const video=field.video_url!==undefined?parseQuestionVideo(field.video_url):field.video;
+ if(video?.provider==="youtube"&&video.id&&/^[A-Za-z0-9_-]{11}$/.test(video.id))return <YouTubePlayer key={video.id} videoId={video.id} title={field.label} caption={field.media_caption}/>;
+ if(video?.url?.startsWith("https://"))return <QuestionVideo key={video.url} video={video} title={field.label} caption={field.media_caption}/>;
+ if(field.image_url?.startsWith("/api/v1/learning-modules/"))return <QuestionPhoto key={field.image_url} field={field} topic={topic}/>;
+ return <QuestionVisual topic={topic} phase={field.phase}/>;
+}
+
+function QuestionPhoto({field,topic}:{field:QuestionMediaField;topic:number}) {
+ const [broken,setBroken]=useState(false);
+ // Private photo URLs require the browser session cookie.
+ // eslint-disable-next-line @next/next/no-img-element
+ return broken?<><QuestionVisual topic={topic} phase={field.phase}/><p className="helper">Foto belum termuat. Minta bantuan gurumu jika diperlukan, ya.</p></>:<figure className="question-photo"><img src={field.image_url!} alt={field.image_alt||field.label} loading="lazy" decoding="async" onError={()=>setBroken(true)}/>{field.media_caption&&<figcaption>{field.media_caption}</figcaption>}</figure>;
+}
+
+function QuestionVideo({video,title,caption}:{video:NonNullable<QuestionMediaField["video"]>;title:string;caption?:string|null}) {
+ const [opened,setOpened]=useState(false);
+ const tiktok=video.provider==="tiktok"&&video.id&&/^\d{12,25}$/.test(video.id);
+ const embedded=tiktok||video.provider==="file";
+ return <section className={"learning-video question-video "+(tiktok?"question-video-tiktok":"")} aria-label={"Video untuk "+title}>
+   <div className="section-heading"><div><p className="eyebrow">AMATI BERSAMA</p><h3>Video dari gurumu</h3>{caption&&<p>{caption}</p>}</div><FriendlyIcon name="play" size={34}/></div>
+   {embedded?(opened?(tiktok?<iframe className="question-video-frame" src={"https://www.tiktok.com/player/v1/"+video.id+"?autoplay=0&loop=0&rel=0&controls=1"} title={title} loading="lazy" allow="fullscreen; encrypted-media; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/>:<video className="question-video-frame" src={video.url} controls preload="none" aria-label={title}/>):<button className="video-cover" type="button" onClick={()=>setOpened(true)}><FriendlyIcon name="play" size={64}/><strong>Buka video pertanyaan ini</strong><span>Amati videonya, lalu ceritakan pendapatmu.</span></button>):<a className="video-cover" href={video.url} target="_blank" rel="noopener noreferrer"><FriendlyIcon name="play" size={64}/><strong>Buka video dari gurumu</strong><span>Video dibuka di tab baru.</span></a>}
+   <div className="video-footer"><small>Kamu boleh menjeda atau mengulang videonya.</small><a className="text-button" href={video.url} target="_blank" rel="noopener noreferrer">Buka video di tab baru</a></div>
+ </section>;
+}
+
 export function ModuleVideoEditor({moduleId}:{moduleId:number}) {
  const {activeClass,user}=useSession();const [data,setData]=useState<ModuleMedia|null>(null),[url,setUrl]=useState(""),[caption,setCaption]=useState(""),[loading,setLoading]=useState(true),[error,setError]=useState(""),[busy,setBusy]=useState(false),[message,setMessage]=useState(""),[revision,setRevision]=useState(0);
  useEffect(()=>{let alive=true;if(!activeClass){setLoading(false);return;}setLoading(true);apiRequest<{data:ModuleMedia}>("/learning-modules/"+moduleId+"?classroom_id="+activeClass).then(r=>{if(alive){setData(r.data);setUrl(r.data.videoId?"https://youtu.be/"+r.data.videoId:"");setCaption(r.data.videoCaption??"");setError("");}}).catch(e=>{if(alive)setError(errorMessage(e));}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[moduleId,activeClass,revision]);

@@ -24,7 +24,7 @@ import { StudentReviewInbox, StudentReviewDetail } from "./student-review";
 import { ContentWorkspace, StudentLearningHub } from "./content-workspace";
 import { StaffHome } from "./stakeholder-home";
 import { GroupWorkspace } from "./group-workspace";
-import { TeacherAssessment, StudentFeedback } from "./teacher-assessment";
+import { TeacherAssessment } from "./teacher-assessment";
 
 import { ReportWorkspace } from "./report-workspace";
 import { ReflectionWorkspace, FollowupWorkspace } from "./reflection-workspace";
@@ -37,7 +37,7 @@ type Role = "Siswa" | "Guru" | "Admin";
 
 
 function Dashboard() {
-  const { user, classrooms, activeClass, setActiveClass, notes, refresh, logout, error: sessionError } = useSession();
+  const { user, classrooms, activeClass, setActiveClass, notes, refresh, updateNote, logout, error: sessionError } = useSession();
   const role: Role = user!.role === "student" ? "Siswa" : user!.role === "teacher" ? "Guru" : "Admin";
   const router = useRouter();
   const pathname = usePathname();
@@ -88,9 +88,9 @@ function Dashboard() {
         const available = activeClass ? [] : await loadPages<Classroom>("/classrooms");
         const classroomId = activeClass ?? available[0]?.id;
         if (!classroomId) throw new Error("Akunmu belum mendapat kelas. Minta guru atau admin menghubungkan akunmu dengan kelas, lalu coba simpan lagi.");
-        await apiRequest<{ data: LearningNote }>("/notes", { method: "PUT", body: JSON.stringify({ classroom_id: classroomId, topic: lesson, phase, content }) });
+        const result=await apiRequest<{ data: LearningNote }>("/notes", { method: "PUT", body: JSON.stringify({ classroom_id: classroomId, topic: lesson, phase, content }) });
         setSaved(true); setNotice("Catatanmu sudah tersimpan. Gurumu bisa membacanya.");
-        try { await refresh(); } catch { setNotice("Catatan sudah tersimpan. Daftar kelas belum termuat; coba muat ulang saat koneksi pulih."); }
+        updateNote(result.data);
         return true;
       } catch (cause) { setSaveError(cause instanceof Error ? cause.message : "Catatan belum tersimpan. Isianmu tetap ada; coba lagi, ya."); return false; }
       finally { setSaving(false); saveInFlight.current = null; }
@@ -140,7 +140,7 @@ function Dashboard() {
         :view==="Laporan"?<ReportWorkspace/>
         :view==="Kelompok"||view==="Kelasku"?<><ClassBoard/><GroupManagement key={activeClass}/>{canUseSvil&&<GroupWorkspace/>}{!student&&<FollowupWorkspace/>}</>
         :view==="Aksiku"?<><GroupWorkspace actionsOnly/><FollowupWorkspace/></>
-        :view==="Ceritaku"?<><ReflectionWorkspace/><StudentFeedback/><ResearchWorkspace/></>
+        :view==="Ceritaku"?<><ReflectionWorkspace/><ResearchWorkspace/></>
         :view==="Tinjauan"?<StudentReviewInbox/>
         :view==="Madrasah"?<div className="lms-workspace"><AdminSetup/><ClassroomManagement key={activeClass}/><SchoolDirectory/><RosterImport/></div>
         :view==="Beranda"&&!student?<div className="lms-workspace"><StaffHome onNavigate={changeView}/><ClassBoard compact/></div>

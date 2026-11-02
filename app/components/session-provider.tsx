@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react";
-import { apiRequest, ApiError, initializeCsrf, loadPages, showToast } from "../lib/api";
+import { apiRequest, clearReadCache, ApiError, initializeCsrf, loadPages, showToast } from "../lib/api";
 import type { TeacherMaterial } from "../lib/material-store";
 
 export type Account = { id: number; name: string; username: string; email: string; role: "student" | "teacher" | "admin"; schoolId: number | null; schoolName: string | null; canUseSvil?: boolean; version?:number; mustChangePassword?:boolean };
@@ -9,7 +9,7 @@ export type Classroom = { id: number; name: string; schoolId: number; schoolName
 export type RegistrationFields = { name: string; username: string; email: string; password: string; password_confirmation: string; class_code: string };
 export type LearningNote = { id: number; classroom_id: number; student_id: number; topic: number; phase: number; content: string; feedback: string | null; reviewed_at: string | null };
 type Session = {
-  user: Account | null; loading: boolean; error: string; materials: TeacherMaterial[]; classrooms: Classroom[]; notes: LearningNote[];
+  user: Account | null; loading: boolean; error: string; materials: TeacherMaterial[]; classrooms: Classroom[]; notes: LearningNote[]; updateNote: (note: LearningNote) => void;
   activeClass: number | null; setActiveClass: (id: number) => void;
   login: (identifier: string, password: string) => Promise<void>; register: (fields: RegistrationFields) => Promise<void>; logout: () => Promise<void>; refresh: () => Promise<void>;
 };
@@ -26,16 +26,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const generation = useRef(0);
 
   const clear = useCallback(() => {
-    generation.current++;
+    generation.current++;clearReadCache();
     setUser(null); setMaterials([]); setClassrooms([]); setNotes([]); setActiveClass(null);
   }, []);
+  const updateNote=useCallback((note:LearningNote)=>setNotes(previous=>[note,...previous.filter(row=>row.id!==note.id)]),[]);
   const refresh = useCallback(async () => {
     const current = ++generation.current;
-    const [materialData, classData, noteData, profile] = await Promise.all([
-      loadPages<TeacherMaterial>("/materials"), loadPages<Classroom>("/classrooms"), loadPages<LearningNote>("/notes"), apiRequest<{data:Account}>("/me"),
-    ]);
+    const bundle=await apiRequest<{data:{profile:Account;materials:import("../lib/api").PageResponse<TeacherMaterial>;classrooms:import("../lib/api").PageResponse<Classroom>;notes:import("../lib/api").PageResponse<LearningNote>}}>("/session-bootstrap",{maxAgeMs:1000});
+    const [materialData,classData,noteData]=await Promise.all([loadPages<TeacherMaterial>("/materials",undefined,{initialPage:bundle.data.materials}),loadPages<Classroom>("/classrooms",undefined,{initialPage:bundle.data.classrooms}),loadPages<LearningNote>("/notes",undefined,{initialPage:bundle.data.notes})]);
     if (current !== generation.current) return;
-    setUser(profile.data); setMaterials(materialData); setClassrooms(classData); setNotes(noteData);
+    setUser(bundle.data.profile); setMaterials(materialData); setClassrooms(classData); setNotes(noteData);
     setActiveClass(previous => classData.some(c => c.id === previous) ? previous : classData[0]?.id ?? null);
     setError("");
   }, []);
@@ -44,11 +44,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let alive = true;
     const expired = () => { clear(); setError("Silakan masuk untuk melanjutkan."); };
     window.addEventListener("svil-session-expired", expired);
-    apiRequest<{ data: Account }>("/me").then(async response => {
-      if (!alive) return;
-      setUser(response.data);
-      await refresh();
-    }).catch(cause => {
+    refresh().catch(cause => {
       if (alive && (!(cause instanceof ApiError) || cause.status !== 401)) setError(cause.message || "Gagal memuat sesi.");
     }).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; generation.current++; window.removeEventListener("svil-session-expired", expired); };
@@ -70,7 +66,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await apiRequest("/auth/logout", { method: "POST", successMessage: "Kamu sudah keluar dari akun.", notifyError: true });
     clear(); setError("");
   };
-  return <Context.Provider value={{ user, loading, error, materials, classrooms, notes, activeClass, setActiveClass, login, register, logout, refresh }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ user, loading, error, materials, classrooms, notes, activeClass, setActiveClass, login, register, logout, refresh, updateNote }}>{children}</Context.Provider>;
 }
 
 export function useSession(): Session {

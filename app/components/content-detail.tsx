@@ -14,6 +14,7 @@ import { QuestionVisual } from "./question-visual";
 import { AsyncState, errorMessage, statusLabel, useApiRows } from "./lms-shared";
 import type { TeacherMaterial } from "../lib/material-store";
 import { ModuleVideoEditor } from "./learning-media";
+import { ModuleQuestionEditor } from "./module-question-editor";
 import { AssignmentReopening } from "./classroom-management";
 function useItem<T>(path:string) {
  const [data,setData]=useState<T|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(""),[revision,setRevision]=useState(0);
@@ -47,7 +48,7 @@ function DiscussionDetail({id,initialEdit}:{id:string;initialEdit:boolean}) {
 }
 function LkpdDetail({id}:{id:string}) {
  const {user}=useSession();const router=useRouter();const item=useItem<LearningModule>("/learning-modules/"+encodeURIComponent(id));
- return <><AsyncState loading={item.loading} error={item.error} retry={item.reload}/>{item.data&&<><ModuleVideoEditor moduleId={item.data.id}/><ModuleDetail key={item.data.id+"-"+item.data.version} module={item.data} admin={user?.role==="admin"} onClose={()=>router.push(user?.role==="admin"?"/admin/konten":"/guru/materi")} onSaved={m=>item.setData(m)}/></>}</>;
+ return <><AsyncState loading={item.loading} error={item.error} retry={item.reload}/>{item.data&&<><ModuleVideoEditor moduleId={item.data.id}/><ModuleQuestionEditor moduleId={item.data.id}/><ModuleDetail key={item.data.id+"-"+item.data.version} module={item.data} admin={user?.role==="admin"} onClose={()=>router.push(user?.role==="admin"?"/admin/konten":"/guru/materi")} onSaved={m=>item.setData(m)}/></>}</>;
 }
 function TaskDetail({id,initialEdit}:{id:string;initialEdit:boolean}) {
  const item=useItem<Assignment>("/assignments/"+encodeURIComponent(id));const submissions=useApiRows<Submission>("/submissions?assignment_id="+encodeURIComponent(id));const [editing,setEditing]=useState(initialEdit),[offline,setOffline]=useState(false);

@@ -1,26 +1,46 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { apiRequest } from "../lib/api";
 import { useSession, type Account } from "./session-provider";
 import { ThemeSelect } from "./theme-select";
 import { FriendlyIcon } from "./friendly-icon";
-import { AsyncState, Field, errorMessage, useApiRows } from "./lms-shared";
+import { AsyncState, Field, errorMessage, useApiRows, useWorkspaceLists } from "./lms-shared";
 import type { Assignment } from "./assignment-workspace";
 import type { Assessment } from "./assessment-workspace";
 
 import { ProfileEditor, AdminPasswordReset } from "./account-settings";
+const boardSections=(classroom:number)=>({announcements:"/announcements?classroom_id="+classroom,assignments:"/assignments?classroom_id="+classroom,assessments:"/assessments?classroom_id="+classroom});
 type Announcement={id:number;classroom_id:number;title:string;content:string;created_at:string};
 export function ClassBoard({compact=false}:{compact?:boolean}) {
  const {user,activeClass}=useSession();const staff=user?.role!=="student";
- const list=useApiRows<Announcement>(activeClass?"/announcements?classroom_id="+activeClass:null),tasks=useApiRows<Assignment>(activeClass?"/assignments?classroom_id="+activeClass:null),tests=useApiRows<Assessment>(activeClass?"/assessments?classroom_id="+activeClass:null);
+ const sections=useMemo(()=>boardSections(activeClass??0),[activeClass]);
+ const board=useWorkspaceLists<{announcements:Announcement;assignments:Assignment;assessments:Assessment}>(activeClass?"/class-board?classroom_id="+activeClass:null,sections);
+ const list={...board,rows:board.rows?.announcements??[]},tasks={...board,rows:board.rows?.assignments??[]},tests={...board,rows:board.rows?.assessments??[]};
  const [open,setOpen]=useState(false),[title,setTitle]=useState(""),[content,setContent]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
  const submit=async(e:FormEvent)=>{e.preventDefault();setBusy(true);setError("");try{await apiRequest("/announcements",{method:"POST",body:JSON.stringify({classroom_id:activeClass,title,content})});setOpen(false);setTitle("");setContent("");await list.reload();}catch(e){setError(errorMessage(e));}finally{setBusy(false);}};
  const upcoming=[...tasks.rows.filter(t=>t.status==="published"&&t.due_at).map(t=>({id:"task-"+t.id,title:t.title,date:t.due_at!,kind:"Tugas"})),...tests.rows.filter(t=>t.status==="published"&&t.closes_at).map(t=>({id:"test-"+t.id,title:t.title,date:t.closes_at!,kind:"Kuis"}))].filter(t=>new Date(t.date).getTime()>=Date.now()).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,compact?3:8);
  if(!activeClass)return null;
  return <section className="panel class-board"><div className="section-heading"><div><p className="eyebrow">KABAR DARI KELAS</p><h2>{staff?"Pengumuman dan pengingat":"Kabar untukmu"}</h2></div>{staff&&<button className="button secondary" onClick={()=>setOpen(v=>!v)}><FriendlyIcon name="plus" size={22}/>Tulis pengumuman</button>}</div>
- <AsyncState loading={list.loading} error={list.error||tasks.error||tests.error} retry={()=>{list.reload();tasks.reload();tests.reload();}}/>
+ <AsyncState loading={list.loading} error={list.error||tasks.error||tests.error} retry={()=>board.reload()}/>
  {open&&staff&&<form className="lms-form" onSubmit={submit}><fieldset disabled={busy}><Field label="Judul pengumuman"><input required maxLength={180} value={title} onChange={e=>setTitle(e.target.value)}/></Field><Field label="Pesan untuk kelas"><textarea required rows={3} maxLength={5000} value={content} onChange={e=>setContent(e.target.value)}/></Field><button className="button primary">{busy?"Membagikan…":"Bagikan ke kelas ini"}</button></fieldset>{error&&<p className="form-error" role="alert">{error}</p>}</form>}
- <div className="class-board-grid"><div className="record-list">{list.rows.slice(0,compact?2:10).map(a=><article key={a.id}><h3>{a.title}</h3><p className="material-body">{a.content}</p><small>{new Date(a.created_at).toLocaleString("id-ID")}</small></article>)}{!list.loading&&!list.rows.length&&<p className="helper">Belum ada pengumuman baru.</p>}</div><div><h3>Yang perlu diingat</h3>{upcoming.length?upcoming.map(t=><div className="deadline-card" key={t.id}><FriendlyIcon name="compass" size={30}/><div><strong>{t.title}</strong><small>{t.kind} · {new Date(t.date).toLocaleString("id-ID")}</small></div></div>):<p className="helper">Belum ada batas pengumpulan yang akan datang.</p>}<p className="helper">Buka kegiatan melalui menu Belajar atau Konten kelas.</p></div></div></section>;
+ <div className="class-board-grid">
+   <div className="record-list">
+     {list.rows.slice(0,compact?2:10).map(a=><article key={a.id}><h3>{a.title}</h3><p className="material-body">{a.content}</p><small>{new Date(a.created_at).toLocaleString("id-ID")}</small></article>)}
+     {!list.loading&&!list.error&&!list.rows.length&&<ClassBoardEmpty kind="announcement" staff={staff}/>}
+   </div>
+   <div><h3>Yang perlu diingat</h3>
+     {upcoming.length?upcoming.map(t=><div className="deadline-card" key={t.id}><FriendlyIcon name="compass" size={30}/><div><strong>{t.title}</strong><small>{t.kind} · {new Date(t.date).toLocaleString("id-ID")}</small></div></div>):tasks.loading||tests.loading?<p className="helper" role="status">Menyiapkan pengingat kelas…</p>:!tasks.error&&!tests.error?<ClassBoardEmpty kind="reminder" staff={staff}/>:null}
+     <p className="helper class-board-help">Buka kegiatan melalui menu {staff?"Konten kelas":"Belajar"}.</p>
+   </div>
+ </div></section>;
+}
+
+function ClassBoardEmpty({kind,staff}:{kind:"announcement"|"reminder";staff:boolean}) {
+ const announcement=kind==="announcement";
+ return <div className={"class-board-empty "+(announcement?"announcement-empty":"reminder-empty")}>
+   <div className="class-board-empty-art" aria-hidden="true"><span className="board-orbit board-orbit-one"/><span className="board-orbit board-orbit-two"/><FriendlyIcon name={announcement?"book":"compass"} size={76}/><span className="board-floating-heart"><FriendlyIcon name="heart" size={28}/></span></div>
+   <div><strong>{announcement?"Belum ada kabar baru":staff?"Belum ada tenggat terdekat":"Belajar pelan-pelan juga boleh"}</strong><p>{announcement?(staff?"Bagikan sapaan atau arahan untuk mendampingi kegiatan kelas.":"Saat gurumu membagikan kabar, kamu bisa membacanya di sini."):(staff?"Jadwal tugas dan kuis kelas akan tampil di bagian ini.":"Belum ada tugas atau kuis yang mendekati batas waktu. Yuk, lanjutkan belajarmu!")}</p></div>
+ </div>;
 }
 type ImportPreview={valid:number;invalid:number;rows:{line:number;name:string;username:string;email:string;errors:string[]}[]};
 type Credentials={name:string;username:string;email:string;initial_password:string};

@@ -9,7 +9,7 @@ function client(fetch) {
   const module = { exports: {} };
   const events = [];
   const toasts = [];
-  vm.runInNewContext(code, { exports: module.exports, fetch, Headers, Response, Blob, Event, CustomEvent, DOMException, setTimeout: callback => setTimeout(callback, 0), clearTimeout, document: { cookie: "XSRF-TOKEN=abc%3Ddef" }, window: { dispatchEvent: event => {events.push(event.type);if(event.type==="svil-toast")toasts.push(event.detail);} } });
+  vm.runInNewContext(code, { exports: module.exports, fetch, Headers, Response, Blob, Event, CustomEvent, DOMException, structuredClone, setTimeout: callback => setTimeout(callback, 0), clearTimeout, document: { cookie: "XSRF-TOKEN=abc%3Ddef" }, window: { dispatchEvent: event => {events.push(event.type);if(event.type==="svil-toast")toasts.push(event.detail);} } });
   return { api: module.exports, events, toasts };
 }
 test("writes include session cookies and decoded CSRF without adding JSON headers to files", async () => {
@@ -130,4 +130,39 @@ test("a success notification is emitted only after a confirmed response and its 
   assert.equal(rejected.toasts.length, 1);
   assert.equal(rejected.toasts[0].tone, "error");
   assert.equal(rejected.toasts[0].message, "Cerita sudah diperbarui.");
+});
+
+test("identical reads share a request and cached results cannot be mutated by another component", async () => {
+  let count=0;
+  const {api}=client(async()=>{count++;return Response.json({data:[{name:"Asli"}]});});
+  const [a,b]=await Promise.all([api.apiRequest("/research-studies",{maxAgeMs:30000}),api.apiRequest("/research-studies",{maxAgeMs:30000})]);
+  assert.equal(count,1);
+  a.data[0].name="Diubah";
+  assert.equal(b.data[0].name,"Asli");
+  assert.equal((await api.apiRequest("/research-studies",{maxAgeMs:30000})).data[0].name,"Asli");
+  assert.equal(count,1);
+});
+
+test("writes, manual reloads and account changes invalidate cached reads; failures are never cached", async () => {
+  let count=0;
+  const {api}=client(async()=>Response.json({count:++count}));
+  await api.apiRequest("/studies",{maxAgeMs:30000});
+  await api.apiRequest("/notes",{method:"PUT",body:"{}"});
+  assert.equal((await api.apiRequest("/studies",{maxAgeMs:30000})).count,3);
+  await api.apiRequest("/studies");
+  assert.equal((await api.apiRequest("/studies",{maxAgeMs:30000})).count,5);
+  api.clearReadCache();
+  assert.equal((await api.apiRequest("/studies",{maxAgeMs:30000})).count,6);
+  let failures=0;const rejected=client(async()=>{failures++;return Response.json({message:"Tidak diizinkan"},{status:403});});
+  await assert.rejects(rejected.api.apiRequest("/studies",{maxAgeMs:30000}));
+  await assert.rejects(rejected.api.apiRequest("/studies",{maxAgeMs:30000}));
+  assert.equal(failures,2);
+});
+
+test("combined lists keep all subsequent pages without fetching the first page twice", async () => {
+  const paths=[];
+  const {api}=client(async path=>{paths.push(path);return Response.json(path.includes("workspace")?{data:{reflections:{data:[1],next_page_url:"untrusted"},schemas:{data:["schema"]}}}:{data:[2]});});
+  const result=await api.loadWorkspaceLists("/reflection-workspace",{reflections:"/reflections",schemas:"/reflections/schema"});
+  assert.equal(JSON.stringify(result.reflections),"[1,2]");
+  assert.deepEqual(paths,["/api/v1/reflection-workspace","/api/v1/reflections?page=2"]);
 });

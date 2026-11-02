@@ -12,13 +12,13 @@ import { QuestionVisual } from "./question-visual";
 import { SubmissionReview } from "./assignment-workspace";
 import { AssessmentReview } from "./assessment-workspace";
 import { useMembers } from "./lms-shared";
-type Attempt = {
+export type Attempt = {
   id: number; student_id: number; material_id: string; answer: { text?: string; choice?: number };
   correct: boolean | null; teacher_feedback: string | null; reviewed_at: string | null; review_version: number; created_at: string;
   question_snapshot?: { type: string; prompt: string; options?: string[]; correctIndex?: number | null; modelAnswer?: string };
   material: { id: string; title: string; topic: number; classroom_id: number };
 };
-type Observation = {
+export type Observation = {
   id: number; classroom_id: number; student_id: number; topic: number; occasion: number; version: number;
   observed_on: string; evidence: string; feedback: string; scores: Record<string, number>;
 };
@@ -29,18 +29,20 @@ const observationAspects = [
 ];
 const localDate = () => new Date().toLocaleDateString("en-CA");
 
-function useRows<T>(path: string) {
+function useRows<T>(path: string | null) {
   const [rows, setRows] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const reload = useCallback(async () => {
+    if(!path)return;
     const result = await loadPages<T>(path);
     setRows(result); setError("");
   }, [path]);
   useEffect(() => {
     let alive = true;
+    if(!path){setRows([]);setLoading(false);return;}
     setLoading(true); setError("");
-    loadPages<T>(path).then(result => { if (alive) setRows(result); })
+    loadPages<T>(path,undefined,{maxAgeMs:30000}).then(result => { if (alive) setRows(result); })
       .catch(e => { if (alive) setError(e.message); }).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [path]);
@@ -164,21 +166,31 @@ function ObservationForm({ existing, classroomId, studentId, topic, occasion, on
   </form>;
 }
 
-export function StudentFeedback({ materialId, generation = 0 }: { materialId?: string; generation?: number }) {
+type ReflectionFeedback = { id:number; classroom_id:number; topic:number; feedback:string|null };
+
+export function StudentFeedback({ materialId, generation = 0, reflections = [], reflectionsLoading = false, reflectionsError = "", reloadReflections, activity }: { materialId?: string; generation?: number; reflections?: ReflectionFeedback[]; reflectionsLoading?: boolean; reflectionsError?: string; reloadReflections?: () => Promise<unknown>; activity?: {attempts:Attempt[];observations:Observation[];loading:boolean;error:string;reload:()=>Promise<unknown>} }) {
   const { activeClass, notes } = useSession();
-  const attempts = useRows<Attempt>("/attempts"+(materialId ? "?material_id="+encodeURIComponent(materialId) : ""));
-  const observations = useRows<Observation>("/observations");
+  const savedAttempts = useRows<Attempt>(activity?null:"/attempts"+(materialId ? "?material_id="+encodeURIComponent(materialId) : ""));
+  const savedObservations = useRows<Observation>(activity?null:"/observations");
+  const attempts=activity?{rows:activity.attempts,loading:activity.loading,error:activity.error,reload:activity.reload}:savedAttempts;
+  const observations=activity?{rows:activity.observations,loading:activity.loading,error:activity.error,reload:activity.reload}:savedObservations;
   const [retryError, setRetryError] = useState("");
-  const retry = () => Promise.all([attempts.reload(), observations.reload()]).catch(e => setRetryError(e.message));
+  const retry = async () => { setRetryError(""); try { if(activity)await activity.reload();else await Promise.all([attempts.reload(), observations.reload(), reloadReflections?.()]); } catch (cause) { setRetryError(cause instanceof Error ? cause.message : "Pesan belum dapat dimuat."); } };
   useEffect(() => { if (generation) attempts.reload().catch(e => setRetryError(e.message)); }, [generation, attempts.reload]);
   const myAttempts = attempts.rows.filter(a => a.material?.classroom_id === activeClass);
   const myObservations = observations.rows.filter(o => o.classroom_id === activeClass);
   const reviewedNotes = notes.filter(n => n.classroom_id === activeClass && n.feedback);
-  return <section className="panel student-feedback"><div className="section-heading"><div><p className="eyebrow">BELAJAR DAN TUMBUH</p><h2>Pesan dari gurumu</h2></div><FriendlyIcon name="heart" size={45}/></div>
-    <LoadState loading={attempts.loading || observations.loading} error={attempts.error || observations.error || retryError} retry={retry}/>
+  const reviewedReflections = reflections.filter(row => row.classroom_id === activeClass && row.feedback);
+  const loading = attempts.loading || observations.loading || reflectionsLoading;
+  const feedbackError = attempts.error || observations.error || reflectionsError || retryError;
+  return <section className="panel student-feedback" id={materialId ? undefined : "teacher-messages"}><div className="section-heading"><div><p className="eyebrow">BELAJAR DAN TUMBUH</p><h2>Pesan dari gurumu</h2></div><FriendlyIcon name="heart" size={45}/></div>
+    <LoadState loading={loading} error={feedbackError} retry={retry}/>
+    <div className="feedback-list">
+    {!materialId && reviewedReflections.map(row => <article className="feedback-card reflection-feedback-card" key={"reflection-"+row.id}><div className="section-heading"><span className="soft-badge">Refleksi pribadi · Pertemuan {row.topic+1}</span><FriendlyIcon name="heart" size={30}/></div><strong>Apresiasi dan dukungan dari gurumu</strong><p className="reflection-feedback-text">{row.feedback}</p></article>)}
     {!materialId && reviewedNotes.map(n => <article className="feedback-card" key={"note-"+n.id}><span className="soft-badge">Ceritaku · Pertemuan {n.topic+1}</span><p>{n.content}</p><strong>Pesan guru</strong><p>{n.feedback}</p></article>)}
     {myAttempts.map(a => <article className="feedback-card" key={a.id}><span className="soft-badge">{a.material.title}</span><p>Jawabanku: {a.answer.text ?? "Pilihan "+"ABCD"[a.answer.choice ?? 0]}</p><strong>{a.reviewed_at ? "Pesan guru" : a.correct === null ? "Menunggu pesan guru" : a.correct ? "Jawabanmu sudah tepat" : "Yuk, pelajari lagi bersama guru"}</strong>{a.teacher_feedback && <p>{a.teacher_feedback}</p>}</article>)}
     {!materialId && myObservations.map(o => <article className="feedback-card" key={"observation-"+o.id}><span className="soft-badge">Kegiatan bersama · Pertemuan {o.topic+1}</span><p>{o.feedback}</p><small>Diamati pada {o.observed_on.slice(0,10)}</small></article>)}
-    {!attempts.loading && !observations.loading && !myAttempts.length && (materialId || (!myObservations.length && !reviewedNotes.length)) && <div className="soft-note">Setelah kamu belajar dan bercerita, pesan dari gurumu akan muncul di sini.</div>}
+    {!loading && !feedbackError && !myAttempts.length && (materialId || (!myObservations.length && !reviewedNotes.length && !reviewedReflections.length)) && <div className="soft-note">Setelah kamu belajar dan bercerita, pesan dari gurumu akan muncul di sini.</div>}
+    </div>
   </section>;
 }
