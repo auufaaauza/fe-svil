@@ -6,7 +6,7 @@ import { useSession } from "./session-provider";
 
 export type Course = { id:number; classroom_id:number; subject:string; title:string; semester:string; method:string; description:string|null; status:string; version:number; classroom?:{id:number;name:string;academic_year:string}; chapters?:Chapter[] };
 export type Chapter = {id:number;course_id:number;title:string;position:number;version:number;lessons?:Lesson[]};
-export type Lesson = {id:number;course_id:number;course_chapter_id:number;title:string;objective:string;position:number;scheduled_on:string|null;mode:string;status:string;version:number};
+export type Lesson = {id:number;course_id:number;course_chapter_id:number;title:string;objective:string;position:number;scheduled_on:string|null;mode:string;status:string;version:number;completion_rule?:string;minimum_score?:number|null};
 export type Member = {id:number;name:string;role:string};
 export function useApiRows<T>(path:string|null) {
  const [rows,setRows]=useState<T[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState("");

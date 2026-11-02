@@ -13,6 +13,8 @@ import { DiscussionForm, ThreadConversation, type Thread } from "./discussion-bo
 import { QuestionVisual } from "./question-visual";
 import { AsyncState, errorMessage, statusLabel, useApiRows } from "./lms-shared";
 import type { TeacherMaterial } from "../lib/material-store";
+import { ModuleVideoEditor } from "./learning-media";
+import { AssignmentReopening } from "./classroom-management";
 function useItem<T>(path:string) {
  const [data,setData]=useState<T|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(""),[revision,setRevision]=useState(0);
  useEffect(()=>{let alive=true;setLoading(true);apiRequest<{data:T}>(path).then(r=>{if(alive){setData(r.data);setError("");}}).catch(e=>{if(alive)setError(errorMessage(e));}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[path,revision]);
@@ -45,11 +47,11 @@ function DiscussionDetail({id,initialEdit}:{id:string;initialEdit:boolean}) {
 }
 function LkpdDetail({id}:{id:string}) {
  const {user}=useSession();const router=useRouter();const item=useItem<LearningModule>("/learning-modules/"+encodeURIComponent(id));
- return <><AsyncState loading={item.loading} error={item.error} retry={item.reload}/>{item.data&&<ModuleDetail key={item.data.id+"-"+item.data.version} module={item.data} admin={user?.role==="admin"} onClose={()=>router.push(user?.role==="admin"?"/admin/konten":"/guru/materi")} onSaved={m=>item.setData(m)}/>}</>;
+ return <><AsyncState loading={item.loading} error={item.error} retry={item.reload}/>{item.data&&<><ModuleVideoEditor moduleId={item.data.id}/><ModuleDetail key={item.data.id+"-"+item.data.version} module={item.data} admin={user?.role==="admin"} onClose={()=>router.push(user?.role==="admin"?"/admin/konten":"/guru/materi")} onSaved={m=>item.setData(m)}/></>}</>;
 }
 function TaskDetail({id,initialEdit}:{id:string;initialEdit:boolean}) {
  const item=useItem<Assignment>("/assignments/"+encodeURIComponent(id));const submissions=useApiRows<Submission>("/submissions?assignment_id="+encodeURIComponent(id));const [editing,setEditing]=useState(initialEdit),[offline,setOffline]=useState(false);
- return <><AsyncState loading={item.loading} error={item.error} retry={item.reload}/>{item.data&&(editing?<AssignmentForm initial={item.data} onClose={()=>setEditing(false)} onSaved={()=>{setEditing(false);item.reload();}}/>:<section className="panel"><div className="section-heading"><div><p className="eyebrow">DETAIL TUGAS</p><h2>{item.data.title}</h2><p>{statusLabel(item.data.status)} · {item.data.submission_mode==="group"?"Kelompok":"Individu"} · maksimum {item.data.max_score} poin</p></div><button className="button primary" onClick={()=>setEditing(true)}>Sunting tugas</button></div><p className="material-body">{item.data.instructions}</p>{item.data.due_at&&<p>Batas pengumpulan: {new Date(item.data.due_at).toLocaleString("id-ID")}</p>}{item.data.rubric?.map(r=><article className="record-list" key={r.key}><strong>{r.label} · {r.max_points} poin</strong><p>{r.description}</p></article>)}<button className="button secondary" onClick={()=>setOffline(v=>!v)}>Catat pengumpulan luring</button></section>)}
+ return <><AsyncState loading={item.loading} error={item.error} retry={item.reload}/>{item.data&&(editing?<AssignmentForm initial={item.data} onClose={()=>setEditing(false)} onSaved={()=>{setEditing(false);item.reload();}}/>:<section className="panel"><div className="section-heading"><div><p className="eyebrow">DETAIL TUGAS</p><h2>{item.data.title}</h2><p>{statusLabel(item.data.status)} · {item.data.submission_mode==="group"?"Kelompok":"Individu"} · maksimum {item.data.max_score} poin</p></div><button className="button primary" onClick={()=>setEditing(true)}>Sunting tugas</button></div><AssignmentReopening assignment={item.data}/><p className="material-body">{item.data.instructions}</p>{item.data.due_at&&<p>Batas pengumpulan: {new Date(item.data.due_at).toLocaleString("id-ID")}</p>}{item.data.rubric?.map(r=><article className="record-list" key={r.key}><strong>{r.label} · {r.max_points} poin</strong><p>{r.description}</p></article>)}<button className="button secondary" onClick={()=>setOffline(v=>!v)}>Catat pengumpulan luring</button></section>)}
  {offline&&item.data&&<AssignmentSubmit assignment={item.data} existingRows={submissions.rows} onClose={()=>setOffline(false)} onSaved={()=>submissions.reload()}/>}</>;
 }
 

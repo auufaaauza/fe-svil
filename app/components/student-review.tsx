@@ -12,7 +12,7 @@ import { TeacherAssessment } from "./teacher-assessment";
 
 type StudentSummary={id:number;name:string;username:string;group:{id:number;name:string}|null;lkpd:{topic:number;notes_filled:number;notes_reviewed:number;group_status:string;reflection_filled:boolean;reflection_reviewed:boolean}[]};
 type Note={id:number;topic:number;phase:number;content:string;content_hash:string;feedback:string|null;reviewed_at:string|null};
-type Detail={student:{id:number;name:string;username:string};classroom_id:number;group:{id:number;classroom_id:number;name:string;users:{id:number;name:string}[]}|null;notes:Note[];reflections:{id:number;topic:number;answers:Record<string,string>;schema_snapshot:Record<string,string>;feedback:string|null;version:number}[];works:{id:number;topic:number;status:string}[];modules:{id:number;topic:number;title:string}[]};
+type Detail={student:{id:number;name:string;username:string};classroom_id:number;group:{id:number;classroom_id:number;name:string;users:{id:number;name:string}[]}|null;notes:Note[];reflections:{id:number;topic:number;answers:Record<string,string>;schema_snapshot:Record<string,string>;feedback:string|null;version:number}[];works:{id:number;learning_group_id:number;topic:number;status:string;groupName?:string;feedback?:string|null;answers?:Record<string,string>;schema_snapshot?:{key:string;label:string}[];product_value?:number|null;presentation_value?:number|null}[];modules:{id:number;topic:number;title:string}[]};
 const groupLabel=(status:string)=>status==="not_started"?"Belum mulai":statusLabel(status);
 export function StudentReviewInbox() {
  const {activeClass,user}=useSession();
@@ -45,6 +45,7 @@ export function StudentReviewDetail({studentId,classroomId}:{studentId:number;cl
  {data.notes.filter(n=>n.topic===Number(topic)).map(n=><NoteReviewCard key={n.id+"-"+n.content_hash+"-"+n.reviewed_at} note={n} name={data.student.name} onSaved={reload}/>)}
  </section>
  <section className="panel"><p className="eyebrow">RUANG REFLEKSI PRIBADI</p><h2>Cerita {data.student.name}</h2>{!data.reflections.some(r=>r.topic===Number(topic))&&<p className="soft-note">Belum ada refleksi terstruktur pada pertemuan ini.</p>}{data.reflections.filter(r=>r.topic===Number(topic)).map(r=><ReflectionReview key={r.id+"-"+r.version} reflection={r} onSaved={reload}/>)}</section>
+ <section className="panel"><h2>Riwayat LKPD kelompok sebelumnya</h2>{data.works.filter(w=>w.learning_group_id!==data.group?.id&&w.topic===Number(topic)).map(w=><details className="source-document" key={w.id}><summary>{w.groupName??"Kelompok sebelumnya"} · LKPD {w.topic+1} · {statusLabel(w.status)}</summary>{w.schema_snapshot?.map(f=><article key={f.key} className="feedback-card"><strong>{f.label}</strong><p>{w.answers?.[f.key]??"Belum diisi"}</p></article>)}{w.feedback&&<p className="teacher-feedback">{w.feedback}</p>}<p>Nilai produk kelompok: {w.product_value??"Belum dinilai"} · Presentasi: {w.presentation_value??"Belum dinilai"}</p></details>)}</section>
  {data.group?<WorkForm key={data.group.id+"-"+topic} group={data.group} topic={Number(topic)} staff/>:<section className="panel"><h3>LKPD kelompok belum tersedia</h3><p>Tempatkan murid ke kelompok melalui Kelasku agar jawaban bersama dapat dicatat.</p></section>}
  </>}
  </div>;

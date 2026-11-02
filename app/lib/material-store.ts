@@ -8,6 +8,7 @@ export type TeacherQuestion = {
 };
 export type TeacherMaterial = {
   id: string; title: string; content: string; topic: number | null; topicLabel?: string | null; courseLessonId?: number | null; courseId?: number | null;
+  videoId?:string|null; youtubeUrl?:string; videoCaption?:string|null; audioUrl?:string|null;
   image: string; imageAlt: string; question: TeacherQuestion | null;
   status: "draft" | "published"; updatedAt: string; classroomId: number; version: number;
   kind: "material" | "quiz"; subject?: string; uploadedBy?: { id: number; name: string }; updatedBy?: { id: number; name: string } | null;
@@ -22,6 +23,7 @@ export async function saveMaterial(material: TeacherMaterial, attachment?: File,
   body.set("classroom_id", String(material.classroomId)); body.set("image_alt", material.imageAlt);
   body.set("question", JSON.stringify(material.question));
   body.set("topic_label", material.topic === null ? material.topicLabel || "" : ""); body.set("course_lesson_id", material.courseLessonId ? String(material.courseLessonId) : "");
+  body.set("youtube_url",material.youtubeUrl??material.videoId??""); body.set("video_caption",material.videoCaption??""); body.set("audio_url",material.audioUrl??"");
   body.set("kind", material.kind); body.set("subject", material.subject || "IPAS");
   if (attachment) body.set("attachment", attachment);
   if (removeAttachment) body.set("remove_attachment", "1");

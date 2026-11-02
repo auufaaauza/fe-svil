@@ -7,8 +7,9 @@ import { FriendlyIcon } from "./friendly-icon";
 import { ThemeSelect } from "./theme-select";
 import { QuestionVisual } from "./question-visual";
 
+import { YouTubePlayer } from "./learning-media";
 type ModuleField = { key: string; label: string; hint: string; phase: number };
-export type LearningModule = { id: number; topic: number; title: string; description: string; instructions: string; fields: ModuleField[]; sourceDocument: string; sourceText?: string; sourceHash: string; status: string; version: number; uploadedBy: { id: number; name: string }; updatedBy: { id: number; name: string }; createdAt: string; updatedAt: string };
+export type LearningModule = { id: number; videoId?:string|null;videoCaption?:string|null;videoVersion?:number; topic: number; title: string; description: string; instructions: string; fields: ModuleField[]; sourceDocument: string; sourceText?: string; sourceHash: string; status: string; version: number; uploadedBy: { id: number; name: string }; updatedBy: { id: number; name: string }; createdAt: string; updatedAt: string };
 export function LkpdLibrary() {
   const { user } = useSession();
   const router = useRouter();
@@ -44,6 +45,7 @@ export function ModuleDetail({module,admin,onClose,onSaved}:{module:LearningModu
     catch(e){setError(e instanceof Error ? e.message : "LKPD belum tersimpan.");}finally{setBusy(false);}
   };
   return <section className="panel module-detail"><div className="section-heading"><div><p className="eyebrow">LKPD {module.topic+1} · VERSI {module.version}</p><h2>{module.title}</h2></div><button className="button secondary" disabled={busy} onClick={onClose}>Tutup</button></div>
+    <YouTubePlayer videoId={module.videoId} title={module.title} caption={module.videoCaption}/>
     <p className="helper">Sumber: {module.sourceDocument}</p><p className="helper">Diimpor {module.uploadedBy.name} · Diperbarui {module.updatedBy.name} pada {new Date(module.updatedAt).toLocaleString("id-ID")}</p>
     {admin && <button className="text-button" disabled={busy} onClick={() => setEdit(v => !v)}>{edit ? "Kembali membaca" : "Sunting LKPD digital"}<FriendlyIcon name="edit" size={22}/></button>}
     {edit ? <form className="material-form" onSubmit={save}><fieldset disabled={busy} className="module-edit-fields"><label className="field-label">Judul<input required maxLength={180} value={title} onChange={e => setTitle(e.target.value)}/></label><label className="field-label">Ringkasan<textarea required maxLength={2000} value={description} onChange={e => setDescription(e.target.value)}/></label><label className="field-label">Petunjuk<textarea required maxLength={8000} rows={4} value={instructions} onChange={e => setInstructions(e.target.value)}/></label><ThemeSelect label="Status publikasi LKPD" value={status} onChange={setStatus} disabled={busy} options={[{value:"published",label:"Terbit"},{value:"draft",label:"Draf"}]}/>
