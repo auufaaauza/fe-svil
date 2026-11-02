@@ -73,7 +73,9 @@ function Dashboard() {
   const changeView = async (next: string) => {
     if (!await savePendingNote()) return;
     const target = nav.find(item => item.label === next);
-    router.push(target?.href ?? studyForRole(user!.role));
+    const destination = target?.href ?? studyForRole(user!.role);
+    if (pathname === destination && !query.toString()) { focusContent(); return; }
+    router.push(destination);
     focusContent();
   };
   const openLesson = async (index: number, nextPhase = 0) => { if (!await savePendingNote()) return; router.push(lessonLocation(user!.role,index,nextPhase)); focusContent(); };
@@ -141,7 +143,7 @@ function Dashboard() {
         </>:view==="Konten kelas"||view==="Konten belajar"?<ContentWorkspace/>
         :view==="Belajar"&&student?<StudentLearningHub onOpenLesson={openLesson} onOpenMaterial={openMaterial}/>
         :view==="Laporan"?<ReportWorkspace/>
-        :view==="Kelompok"||view==="Kelasku"?<><ClassBoard/><GroupManagement key={activeClass}/>{canUseSvil&&<GroupWorkspace/>}{!student&&<FollowupWorkspace/>}</>
+        :view==="Kelompok"||view==="Kelasku"?<><ClassBoard/>{!student&&<GroupManagement key={activeClass}/>} {canUseSvil&&<GroupWorkspace/>}{!student&&<FollowupWorkspace/>}</>
         :view==="Aksiku"?<><GroupWorkspace actionsOnly/><FollowupWorkspace/></>
         :view==="Ceritaku"?<><ReflectionWorkspace/><ResearchWorkspace/></>
         :view==="Tinjauan"?<StudentReviewInbox/>

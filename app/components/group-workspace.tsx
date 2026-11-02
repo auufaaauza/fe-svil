@@ -153,7 +153,7 @@ export function GroupWorkspace({ actionsOnly = false }: { actionsOnly?: boolean 
     let active = true;
     if (!activeClass) return;
     setLoading(true);setError("");setGroups([]);
-    Promise.all([loadPages<Group>("/groups"),staff ? loadPages<Account>(`/classrooms/${activeClass}/members`) : Promise.resolve([])]).then(([all,people]) => {
+    Promise.all([loadPages<Group>("/groups",undefined,{maxAgeMs:30000}),staff ? loadPages<Account>(`/classrooms/${activeClass}/members`,undefined,{maxAgeMs:30000}) : Promise.resolve([])]).then(([all,people]) => {
       if (!active) return;
       setGroups(all.filter(g => g.classroom_id === activeClass && (staff || g.users.some(member => member.id === user?.id)))); setMembers(people.filter(person => person.role === "student"));
     }).catch(cause => { if (active) setError(messageOf(cause)); }).finally(() => { if (active) setLoading(false); });

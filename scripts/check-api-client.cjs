@@ -166,3 +166,21 @@ test("combined lists keep all subsequent pages without fetching the first page t
   assert.equal(JSON.stringify(result.reflections),"[1,2]");
   assert.deepEqual(paths,["/api/v1/reflection-workspace","/api/v1/reflections?page=2"]);
 });
+
+test("group list consumers share all pages and navigation reuses them until a write invalidates them", async () => {
+  const paths=[];
+  const {api}=client(async (url,options)=>{
+    paths.push(url);
+    if(options.method==="PUT")return Response.json({data:{id:1}});
+    return Response.json(url.endsWith("page=1")?{data:[{id:1}],next_page_url:"?page=2"}:{data:[{id:2}],next_page_url:null});
+  });
+  const read=()=>api.loadPages("/groups",undefined,{maxAgeMs:30000});
+  const [management,workspace]=await Promise.all([read(),read()]);
+  assert.equal(JSON.stringify(management),"[{\"id\":1},{\"id\":2}]");
+  assert.equal(JSON.stringify(workspace),JSON.stringify(management));
+  await read();
+  assert.deepEqual(paths,["/api/v1/groups?page=1","/api/v1/groups?page=2"]);
+  await api.apiRequest("/groups/1",{method:"PUT",body:JSON.stringify({name:"Kelompok baru"})});
+  await read();
+  assert.deepEqual(paths.slice(2),["/api/v1/groups/1","/api/v1/groups?page=1","/api/v1/groups?page=2"]);
+});

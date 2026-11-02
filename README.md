@@ -25,3 +25,6 @@ Tab kelas/mapel, tugas/proyek, kuis banyak soal, buku nilai, roster/pengumuman, 
 Pengaturan akun dan Kabar berada di header. Tab Kalender/Progres di ruang belajar/laporan terhubung ke API; siswa juga dapat membuka riwayat kelas lama. Guru/admin mengatur video LKPD di detail konten dan media materi pada formulir materi. Video YouTube memakai pemutar tertanam setelah tombol putar ditekan; audio memakai tautan HTTPS dan kontrol bawaan browser.
 
 Environment Vercel production: API_BACKEND_URL=https://api2.findmycareer.my.id. Nilai ini server-only. Unggah perubahan source dan redeploy Vercel setelah backend diperbarui. Jangan mengunggah .env lokal, .next atau node_modules. Pemeriksaan visual ponsel dan pengujian di domain hosting aktual tetap perlu dilakukan.
+
+
+Template impor siswa tersedia melalui Admin → Madrasah → Impor akun siswa → Unduh template CSV. File public/templates/svil-template-impor-siswa.csv berisi header name,username,email,password. Isi siswa mulai baris kedua; password opsional (6–12 karakter bila diisi), kelas dipilih pada halaman impor. Simpan CSV UTF-8, unggah untuk pratinjau, kemudian konfirmasi pembuatan akun setelah seluruh baris valid.
