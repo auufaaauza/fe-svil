@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-export type IconName = "home" | "compass" | "book" | "heart" | "sprout" | "people" | "edit" | "chart" | "school" | "plus" | "play" | "pause" | "arrow" | "back" | "check" | "upload" | "search" | "close";
+export type IconName = "home" | "compass" | "book" | "heart" | "sprout" | "people" | "edit" | "chart" | "school" | "plus" | "play" | "pause" | "arrow" | "back" | "check" | "upload" | "search" | "close" | "exit";
 
 /** Original SVG illustrations: labels stay in the surrounding button. */
 export function FriendlyIcon({ name, size = 24, className = "" }: { name: IconName; size?: number; className?: string }) {
@@ -25,6 +25,7 @@ export function FriendlyIcon({ name, size = 24, className = "" }: { name: IconNa
       {name === "upload" && <><path fill="#d7e9f9" d="M9 28v13h30V28"/><path d="M24 32V7m-9 9 9-9 9 9"/></>}
       {name === "search" && <><circle cx="21" cy="20" r="13" fill="#d8ecf3"/><path d="m31 30 11 12M14 18q1-5 6-5"/></>}
       {name === "close" && <path stroke="currentColor" d="m13 13 22 22m0-22L13 35"/>}
+      {name === "exit" && <><rect x="6" y="6" width="24" height="36" rx="6" fill="#f7d5b0"/><path fill="#fff5e7" d="M12 12h12v24H12Z"/><circle cx="20" cy="25" r="1" fill="#28584f" stroke="none"/><g className="exit-arrow"><path d="M28 24h15m-6-6 6 6-6 6" stroke="#975743" strokeWidth="3"/></g><path d="M5 42h28"/></>}
     </g>
   </svg>;
 }

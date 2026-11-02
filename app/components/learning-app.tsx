@@ -33,11 +33,12 @@ import { ResearchWorkspace } from "./research-workspace";
 import { AccountPanel, SettingsButton, NotificationCenter } from "./account-settings";
 import { ClassroomManagement, GroupManagement } from "./classroom-management";
 import { LessonVideo } from "./learning-media";
+import { AccountSessionCard } from "./account-session-card";
 type Role = "Siswa" | "Guru" | "Admin";
 
 
 function Dashboard() {
-  const { user, classrooms, activeClass, setActiveClass, notes, refresh, updateNote, logout, error: sessionError } = useSession();
+  const { user, classrooms, activeClass, setActiveClass, notes, refresh, updateNote, error: sessionError } = useSession();
   const role: Role = user!.role === "student" ? "Siswa" : user!.role === "teacher" ? "Guru" : "Admin";
   const router = useRouter();
   const pathname = usePathname();
@@ -104,15 +105,17 @@ function Dashboard() {
     <a href="#main-content" className="skip-link">Langsung ke isi halaman</a>
     <aside className="sidebar">
       <Link className="brand" href={homeForRole(user!.role)} aria-label="SVIL beranda"><BrandLogo/></Link>
+      <div className="sidebar-scroll">
       <div className="workspace"><FriendlyIcon name="school" size={38}/><div><strong>{user!.schoolName??"Pengelolaan SVIL"}</strong><small>{classrooms.find(c=>c.id===activeClass)?.name??role}</small></div></div>
       <p className="nav-label">{student?"RUANG PETUALANGANMU":"RUANG "+role.toUpperCase()}</p>
       <nav aria-label="Navigasi utama" style={{gridTemplateColumns:"repeat("+nav.length+",minmax(0,1fr))"}}>{nav.map(item=><button type="button" key={item.label} disabled={saving} aria-current={view===item.label?"page":undefined} className={"nav-item "+(view===item.label?"active":"")} onClick={()=>changeView(item.label)}><FriendlyIcon name={item.icon} size={30}/><span>{item.label}</span></button>)}</nav>
       <div className="sidebar-note"><FriendlyIcon name="heart" size={42}/><strong>Kebaikan itu menular.</strong><p>Dengarkan teman.<br/>Sayangi lingkungan.<br/>Mulai dari hal kecil.</p></div>
-      <div className="sidebar-footer"><span className="avatar"><FriendlyIcon name={student?"compass":"people"} size={30}/></span><div><strong>{user!.name}</strong><small>{student?"Penjelajah Nusantara":"Ruang pengelolaan"}</small></div></div>
+      </div>
+      <div className="sidebar-footer"><AccountSessionCard beforeLeave={savePendingNote} disabled={saving}/></div>
     </aside>
     <div className="main-shell">
       <header className="topbar"><div className="breadcrumb">Ruang {role.toLowerCase()} <span>/</span> <strong>{lesson!==null||customId?"Belajar":view}</strong></div>
-        <div className="header-learning-actions"><NotificationCenter beforeLeave={savePendingNote}/><SettingsButton beforeLeave={savePendingNote}/></div><div className="top-actions desktop-session">{classrooms.length>0&&<div className="role-switch"><span>Kelas</span><ThemeSelect label="Kelas belajar" disabled={saving} value={activeClass??""} onChange={async value=>{if(!await savePendingNote())return;setActiveClass(Number(value));router.push(homeForRole(user!.role));focusContent();}} options={classrooms.map(c=>({value:String(c.id),label:c.name,description:c.schoolName}))}/></div>}<button className="button secondary logout-button" disabled={saving} onClick={async()=>{if(await savePendingNote())logout().catch(e=>setNotice(e.message));}}>Keluar</button></div>
+        <div className="header-learning-actions"><NotificationCenter beforeLeave={savePendingNote}/><SettingsButton beforeLeave={savePendingNote}/></div><div className="top-actions desktop-session">{classrooms.length>0&&<div className="role-switch"><span>Kelas</span><ThemeSelect label="Kelas belajar" disabled={saving} value={activeClass??""} onChange={async value=>{if(!await savePendingNote())return;setActiveClass(Number(value));router.push(homeForRole(user!.role));focusContent();}} options={classrooms.map(c=>({value:String(c.id),label:c.name,description:c.schoolName}))}/></div>}</div>
       </header>
       <main ref={mainRef} tabIndex={-1} id="main-content">
         <div className="page-heading"><div><p className="eyebrow">{student?"BELAJAR, PEDULI, DAN TUMBUH BERSAMA":"SMART VALUE INQUIRY LEARNING"}</p><h1>{heading}<span className="heading-mascot"><FriendlyIcon name={student?"heart":"sprout"} size={36}/></span></h1><p>{student?"Baca bahan belajarmu, temukan hal baru, dan bertumbuh bersama.":"Dampingi proses belajar dan catat bukti perkembangan yang bermakna."}</p></div><span className="term-pill">{classrooms.find(c=>c.id===activeClass)?.name??"Ruang sekolah"}{classrooms.find(c=>c.id===activeClass)?.archived?" · Arsip":""}</span></div>
