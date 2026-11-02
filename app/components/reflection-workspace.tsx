@@ -21,7 +21,7 @@ export function ReflectionWorkspace() {
 function ReflectionForm({classroomId,schema,existing,onSaved}:{classroomId:number|null;schema:Schema;existing?:Reflection;onSaved:()=>Promise<Reflection[]>}) {
  const fields=existing?.schema_snapshot??schema.fields;
  const [answers,setAnswers]=useState<Record<string,string>>(existing?.answers??{}),[busy,setBusy]=useState(false),[error,setError]=useState(""),[saved,setSaved]=useState(false);
- const submit=async(e:FormEvent)=>{e.preventDefault();setBusy(true);setError("");try{await apiRequest("/reflections",{method:"PUT",body:JSON.stringify({classroom_id:classroomId,topic:schema.topic,version:existing?.version??0,answers})});setSaved(true);await onSaved();}catch(e){setError(errorMessage(e));}finally{setBusy(false);}};
+ const submit=async(e:FormEvent)=>{e.preventDefault();setBusy(true);setError("");try{await apiRequest("/reflections",{method:"PUT",body:JSON.stringify({classroom_id:classroomId,topic:schema.topic,version:existing?.version??0,answers}),successMessage:"Ceritamu berhasil disimpan. Terima kasih sudah berbagi!",notifyError:true});setSaved(true);await onSaved();}catch(e){setError(errorMessage(e));}finally{setBusy(false);}};
  return <form className="lms-form" onSubmit={submit}><QuestionVisual topic={schema.topic} phase={3}/><fieldset disabled={busy}>
  {Object.entries(fields).map(([key,label])=><Field label={label} key={key}><textarea required rows={3} maxLength={4000} value={answers[key]??""} placeholder="Tulis dengan bahasamu sendiri, ya…" onChange={e=>{setAnswers(p=>({...p,[key]:e.target.value}));setSaved(false);}}/></Field>)}
  {existing?.feedback&&<div className="teacher-feedback"><strong>Pesan dari gurumu</strong><p>{existing.feedback}</p></div>}

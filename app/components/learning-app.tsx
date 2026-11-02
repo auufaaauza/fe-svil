@@ -116,6 +116,7 @@ function Dashboard() {
       </header>
       <main ref={mainRef} tabIndex={-1} id="main-content">
         <div className="page-heading"><div><p className="eyebrow">{student?"BELAJAR, PEDULI, DAN TUMBUH BERSAMA":"SMART VALUE INQUIRY LEARNING"}</p><h1>{heading}<span className="heading-mascot"><FriendlyIcon name={student?"heart":"sprout"} size={36}/></span></h1><p>{student?"Baca bahan belajarmu, temukan hal baru, dan bertumbuh bersama.":"Dampingi proses belajar dan catat bukti perkembangan yang bermakna."}</p></div><span className="term-pill">{classrooms.find(c=>c.id===activeClass)?.name??"Ruang sekolah"}{classrooms.find(c=>c.id===activeClass)?.archived?" · Arsip":""}</span></div>
+        <div className="page-content-stack">
         {sessionError&&<div className="form-error" role="alert">{sessionError}<button className="text-button" onClick={()=>refresh().catch(e=>setNotice(e.message))}>Coba muat lagi</button></div>}
         {notice&&<div className="notice" role="status"><FriendlyIcon name="check" size={26}/><span>{notice}</span><button onClick={()=>setNotice("")} aria-label="Tutup pemberitahuan"><FriendlyIcon name="close" size={20}/></button></div>}
         {student&&!canUseSvil&&(lesson!==null||["Ceritaku","Aksiku"].includes(view))?<section className="panel"><h2>Ruang belajarmu sudah siap</h2><p>Gurumu membagikan kegiatan melalui menu Belajar.</p><button className="button primary" onClick={()=>changeView("Belajar")}>Buka kegiatan belajar</button></section>
@@ -144,6 +145,7 @@ function Dashboard() {
         :view==="Madrasah"?<div className="lms-workspace"><AdminSetup/><ClassroomManagement key={activeClass}/><SchoolDirectory/><RosterImport/></div>
         :view==="Beranda"&&!student?<div className="lms-workspace"><StaffHome onNavigate={changeView}/><ClassBoard compact/></div>
         :<><ClassBoard compact/><StudentLearningHub onOpenLesson={openLesson} onOpenMaterial={openMaterial}/></>}
+        </div>
         <footer className="page-footer"><span><strong>svil.</strong> Belajar dengan hati, bertumbuh bersama.</span><span>SVIL · belajar dengan hati</span></footer>
       </main>
     </div>

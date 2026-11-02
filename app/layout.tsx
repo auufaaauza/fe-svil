@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { SessionProvider } from "./components/session-provider";
+import { ToastViewport } from "./components/toast-viewport";
 
 const jakarta = localFont({
   src: "./fonts/jakarta-latin.woff2",
@@ -33,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="id"
       className={`${jakarta.variable} ${poppins.variable}`}
     >
-      <body className="min-h-full flex flex-col"><SessionProvider>{children}</SessionProvider></body>
+      <body className="min-h-full flex flex-col"><SessionProvider>{children}</SessionProvider><ToastViewport/></body>
     </html>
   );
 }

@@ -6,6 +6,9 @@
   --teal: #257968;
   --muted: #657c74;
   --border: #e2eae5;
+  --section-gap: 24px;
+  --card-gap: 16px;
+  --feedback-gap: 20px;
 }
 
 .login-page { align-items: center; min-height: 100svh; max-width: 1120px; padding: 48px 32px; display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); gap: clamp(32px,5vw,70px); }
@@ -211,7 +214,12 @@ progress { accent-color: #689c76; width: 90px; height: 8px; }
 .review-box .button { margin-top: 18px; }
 .workshop-layout { display: grid; grid-template-columns: minmax(0,1fr) 270px; gap: 24px; align-items: start; }
 .helper { font-size: 12px; line-height: 1.8; color: #71816b; }
-.form-error { border: 1px solid #efc5bb; border-radius: 10px; background: #fff3ef; padding: 15px; font-size: 13px; color: #9b5042; }
+.form-error { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; border: 1px solid #efc5bb; border-radius: 10px; background: #fff3ef; padding: 15px; font-size: 13px; color: #9b5042; overflow-wrap: anywhere; }
+.form-error > .text-button { flex-shrink: 0; white-space: normal; text-align: left; }
+.material-form > :is(.notice, .form-error):not(:first-child),
+.review-box > :is(.notice, .form-error):not(:first-child),
+.phase-instruction > .form-actions + .form-error,
+.panel > :is(.form-actions, .button, .inline-actions, .inset-form) + :is(.notice, .form-error) { margin-block-start: var(--feedback-gap); }
 .image-upload { padding: 19px; margin: 24px 0; border: 1px dashed #c8d6bf; border-radius: 12px; background: #fbfcf8; }
 .image-upload > .field-label { margin-top: 0; }
 input[type=file] { display: block; width: 100%; font-size: 12px; overflow: hidden; }
@@ -765,6 +773,7 @@ input:not([type=radio]):not([type=file]), textarea { font-size: 16px; }
 .lms-workspace > *, .lms-form > *, .lms-form-grid > *, .lesson-select-grid > * { min-width:0; }
 .inline-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
 .lms-form { display:grid; gap:20px; margin:22px 0; min-width:0; }
+.lms-form > :is(.notice, .form-error) { margin-block: 0; }
 .lms-form fieldset { display:grid; gap:20px; border:0; padding:0; margin:0; min-width:0; }
 .lms-form legend { font-size:18px; font-weight:600; line-height:1.6; margin-bottom:18px; }
 .lms-form .form-actions { margin-top:0; }
@@ -881,4 +890,37 @@ input:not([type=radio]):not([type=file]), textarea { font-size: 16px; }
 @media(max-width:767px) {
  .document-viewer { border-radius:15px; margin:23px -6px; }.document-viewer-header { padding:15px; gap:12px; }.document-viewer-header .inline-actions { display:flex; width:100%; justify-content:space-between; gap:12px; }.document-viewer-header .button { padding:8px 14px; min-height:40px; font-size:12px; }
  .pdf-frame { height:70svh; min-height:420px; }.document-viewer-footer { padding:14px 15px; }.slide-stage { padding:8px; }.document-viewer-controls { padding:15px 12px; gap:7px; }.document-viewer-controls .button { padding:10px; font-size:12px; min-height:44px; gap:5px; }.document-viewer-controls .friendly-icon { width:19px; height:19px; flex-basis:19px; }.document-viewer-controls > span { font-size:11px; }.work-pagination .button { padding:9px 13px; font-size:12px; min-height:44px; }
+}
+
+.page-content-stack { display: grid; gap: var(--section-gap); min-width: 0; }
+.page-content-stack > * { min-width: 0; margin-block: 0; }
+.page-content-stack > .back-link { justify-self: start; }
+.card-stack { display: grid; gap: var(--card-gap); list-style: none; margin: 0; padding: 0; min-width: 0; }
+.card-stack > * { min-width: 0; margin-block: 0; }
+.school-directory { display: grid; align-content: start; gap: 20px; }
+.school-directory > h2 { margin: 0; }
+.school-directory .class-invitations { margin-block: 4px 0; }
+.school-directory .class-invitations > h3 { margin-block: 0 16px; }
+.school-directory .card-stack > .class-invitation { margin: 0; }
+.reflection-answer-list { display: grid; gap: 20px; }
+.reflection-answer-list > div { display: grid; gap: 8px; min-width: 0; }
+.reflection-answer-list p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.toast-viewport { position: fixed; z-index: 2000; top: max(20px, env(safe-area-inset-top)); right: max(20px, env(safe-area-inset-right)); display: grid; gap: 12px; width: min(390px, calc(100vw - 32px)); pointer-events: none; }
+.toast-card { display: flex; align-items: flex-start; gap: 12px; padding: 17px 14px 17px 17px; border: 1px solid #d9e8dd; border-left: 5px solid #6ca789; border-radius: 18px; background: #f5fbf4; box-shadow: 0 12px 35px #294f3d24; color: #2a5948; pointer-events: auto; animation: toast-enter .24s ease-out; }
+.toast-error { background: #fff6f1; border-color: #f0d8cc; border-left-color: #d78e78; color: #8e4c3d; }
+.toast-info { background: #f7f4fe; border-color: #e3dcf0; border-left-color: #a995cd; color: #635380; }
+.toast-icon { display: flex; flex: 0 0 34px; }
+.toast-copy { flex: 1; min-width: 0; }
+.toast-copy strong { font: 800 15px/1.5 var(--font-jakarta), sans-serif; }
+.toast-copy p { margin: 5px 0 0; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.toast-close { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 44px; margin: -7px -5px 0 0; border-radius: 11px; background: transparent; color: inherit; }
+.toast-close:hover { background: #ffffffaa; }
+@keyframes toast-enter { from { opacity: 0; transform: translate(18px, -8px); } to { opacity: 1; transform: translate(0, 0); } }
+@media (max-width: 767px) {
+  :root { --section-gap: 20px; --feedback-gap: 16px; }
+  .school-directory { gap: 16px; }
+  .toast-viewport { top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-card { animation: none; }
 }

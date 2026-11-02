@@ -43,7 +43,7 @@ export function WorkForm({ group, topic, staff }: { group: Group; topic: number;
     const status = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value ?? "draft";
     if (status === "submitted") { const missing = bundle!.fields.findIndex(f => !answers[f.key]?.trim()); if (missing >= 0) { setFieldPage(Math.floor(missing/4)); setError("Masih ada bagian yang perlu dilengkapi. Yuk, isi dahulu sebelum mengirim."); setBusy(false); return; } }
     try {
-      const result = await apiRequest<{ data: Work }>(`/groups/${group.id}/work/${topic}`, { method: "PUT", body: JSON.stringify({ version: bundle?.data?.version ?? 0, status, answers }) });
+      const result = await apiRequest<{ data: Work }>(`/groups/${group.id}/work/${topic}`, { method: "PUT", body: JSON.stringify({ version: bundle?.data?.version ?? 0, status, answers }), successMessage: status === "submitted" ? "LKPD kelompokmu berhasil dikirim ke guru." : "Draf LKPD kelompokmu berhasil disimpan.", notifyError: true });
       setBundle(previous => previous ? { ...previous, data: result.data } : previous);
       setMessage(status === "submitted" ? "LKPD kelompokmu sudah dikirim. Terima kasih sudah bekerja sama!" : "Draf kelompokmu tersimpan.");
     } catch (cause) { setError(messageOf(cause)); } finally { setBusy(false); }
@@ -54,7 +54,7 @@ export function WorkForm({ group, topic, staff }: { group: Group; topic: number;
     const body: Record<string,unknown> = { version: bundle.data.version, status, feedback, product_scores: null, presentation_scores: null };
     if (rubric && topic === 3) for (const name of ["product","presentation"] as const) body[name+"_scores"] = Object.fromEntries(Object.keys(bundle.rubrics[name]).map(key => [key,Number(scores[name+"."+key])]));
     try {
-      const result = await apiRequest<{ data: Work }>(`/group-work/${bundle.data.id}/review`, { method: "PUT", body: JSON.stringify(body) });
+      const result = await apiRequest<{ data: Work }>(`/group-work/${bundle.data.id}/review`, { method: "PUT", body: JSON.stringify(body), successMessage: "Tinjauan LKPD berhasil disimpan.", notifyError: true });
       setBundle({ ...bundle, data: result.data }); setMessage("Tinjauan dan rubrik tersimpan. Riwayat jawaban tetap dipertahankan.");
     } catch (cause) { setError(messageOf(cause)); } finally { setBusy(false); }
   };

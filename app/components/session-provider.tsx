@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react";
-import { apiRequest, ApiError, initializeCsrf, loadPages } from "../lib/api";
+import { apiRequest, ApiError, initializeCsrf, loadPages, showToast } from "../lib/api";
 import type { TeacherMaterial } from "../lib/material-store";
 
 export type Account = { id: number; name: string; username: string; email: string; role: "student" | "teacher" | "admin"; schoolId: number | null; schoolName: string | null; canUseSvil?: boolean; version?:number; mustChangePassword?:boolean };
@@ -55,19 +55,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [clear, refresh]);
 
   const login = async (identifier: string, password: string) => {
-    await initializeCsrf();
-    const result = await apiRequest<{ data: Account }>("/auth/login", { method: "POST", body: JSON.stringify({ login: identifier, password }) });
+    try { await initializeCsrf(); } catch (cause) { showToast(cause instanceof Error ? cause.message : "Sesi aman belum dapat disiapkan.", "error"); throw cause; }
+    const result = await apiRequest<{ data: Account }>("/auth/login", { method: "POST", body: JSON.stringify({ login: identifier, password }), successMessage: "Kamu berhasil masuk. Selamat datang di SVIL!", notifyError: true });
     setUser(result.data); setError("");
     try { await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Gagal memuat data kelas."); }
   };
   const register = async (fields: RegistrationFields) => {
-    await initializeCsrf();
-    const result = await apiRequest<{ data: Account }>("/auth/register", { method: "POST", body: JSON.stringify(fields) });
+    try { await initializeCsrf(); } catch (cause) { showToast(cause instanceof Error ? cause.message : "Sesi aman belum dapat disiapkan.", "error"); throw cause; }
+    const result = await apiRequest<{ data: Account }>("/auth/register", { method: "POST", body: JSON.stringify(fields), successMessage: "Akunmu berhasil dibuat. Selamat belajar!", notifyError: true });
     setUser(result.data); setError("");
     try { await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Gagal memuat kelas."); }
   };
   const logout = async () => {
-    await apiRequest("/auth/logout", { method: "POST" });
+    await apiRequest("/auth/logout", { method: "POST", successMessage: "Kamu sudah keluar dari akun.", notifyError: true });
     clear(); setError("");
   };
   return <Context.Provider value={{ user, loading, error, materials, classrooms, notes, activeClass, setActiveClass, login, register, logout, refresh }}>{children}</Context.Provider>;

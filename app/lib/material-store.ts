@@ -36,7 +36,7 @@ export async function saveMaterial(material: TeacherMaterial, attachment?: File,
     body.set("image", blob, "material."+extension);
   }
   try {
-    const result = await apiRequest<{ data: TeacherMaterial }>(material.id ? "/materials/"+material.id : "/materials", { method: "POST", body });
+    const result = await apiRequest<{ data: TeacherMaterial }>(material.id ? "/materials/"+material.id : "/materials", { method: "POST", body, successMessage: material.status === "published" ? "Materi berhasil diterbitkan untuk kelas yang dipilih." : "Draf materi berhasil disimpan.", notifyError: true });
     return { ok: true, material: result.data, message: material.status === "published" ? "Materi terbit dan tersedia untuk siswa di kelas yang dipilih." : "Draf tersimpan di server. Siswa belum dapat melihatnya." };
   } catch (cause) {
     return { ok: false, message: cause instanceof Error ? cause.message : "Materi belum tersimpan. Coba lagi." };
