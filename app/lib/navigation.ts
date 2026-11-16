@@ -4,11 +4,10 @@ export type AccountRole = "student" | "teacher" | "admin";
 export type WorkspaceLink = { label: string; href: string; icon: IconName };
 export const workspaceNavigation: Record<AccountRole, WorkspaceLink[]> = {
   student: [
-    { label: "Beranda", href: "/siswa", icon: "home" },
-    { label: "Belajar", href: "/siswa/belajar", icon: "compass" },
-    { label: "Ceritaku", href: "/siswa/cerita", icon: "heart" },
-    { label: "Aksiku", href: "/siswa/aksi", icon: "sprout" },
-    { label: "Kelompok", href: "/siswa/kelompok", icon: "people" },
+    { label: "LKPD", href: "/siswa", icon: "edit" },
+    { label: "Materi", href: "/siswa/materi", icon: "book" },
+    { label: "Tugas", href: "/siswa/tugas", icon: "compass" },
+    { label: "Ringkasan", href: "/siswa/ringkasan", icon: "chart" },
   ],
   teacher: [
     { label: "Beranda", href: "/guru", icon: "home" },

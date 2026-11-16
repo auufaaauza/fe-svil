@@ -11,7 +11,7 @@ import { phaseNames } from "../lib/learning";
 import { WorkForm } from "./group-workspace";
 import { TeacherAssessment } from "./teacher-assessment";
 
-type StudentSummary={id:number;name:string;username:string;group:{id:number;name:string}|null;lkpd:{topic:number;notes_filled:number;notes_reviewed:number;group_status:string;reflection_filled:boolean;reflection_reviewed:boolean}[]};
+type StudentSummary={id:number;name:string;username:string;group:{id:number;name:string}|null;lkpd:{title?:string;topic:number;notes_filled:number;notes_reviewed:number;group_status:string;reflection_filled:boolean;reflection_reviewed:boolean}[]};
 type Note={id:number;topic:number;phase:number;content:string;content_hash:string;feedback:string|null;reviewed_at:string|null};
 type Detail={student:{id:number;name:string;username:string};classroom_id:number;group:{id:number;classroom_id:number;name:string;users:{id:number;name:string}[]}|null;notes:Note[];reflections:{id:number;topic:number;answers:Record<string,string>;schema_snapshot:Record<string,string>;feedback:string|null;version:number}[];works:{id:number;learning_group_id:number;topic:number;status:string;groupName?:string;feedback?:string|null;answers?:Record<string,string>;schema_snapshot?:{key:string;label:string}[];product_value?:number|null;presentation_value?:number|null}[];modules:{id:number;topic:number;title:string}[]};
 const groupLabel=(status:string)=>status==="not_started"?"Belum mulai":statusLabel(status);
@@ -29,7 +29,7 @@ export function StudentReviewInbox() {
  <div className="content-filters"><label className="search-field"><FriendlyIcon name="search" size={24}/><input aria-label="Cari nama murid" placeholder="Cari nama murid…" value={search} onChange={e=>setSearch(e.target.value)}/></label><ThemeSelect label="Filter pengisian murid" value={filter} onChange={setFilter} options={[{value:"all",label:"Semua murid"},{value:"filled",label:"Sudah mengisi kegiatan"},{value:"pending",label:"Perlu ditinjau"}]}/></div>
  {!list.loading&&!visible.length&&<div className="panel soft-note">Belum ada murid yang sesuai. Periksa anggota kelas atau ubah filter.</div>}
  <div className="student-review-grid">{visible.map(s=><article className="panel student-review-card" key={s.id}><div className="section-heading"><div className="student-review-name"><span className="student-initial">{s.name.slice(0,1).toUpperCase()}</span><div><h3>{s.name}</h3><small>{s.group?.name??"Belum memiliki kelompok"}</small></div></div><FriendlyIcon name="heart" size={34}/></div>
- <div className="student-lkpd-summary">{s.lkpd.map(l=><div key={l.topic}><strong>LKPD {l.topic+1}</strong><span>Catatan pribadi: {l.notes_filled}/5 langkah · ditinjau {l.notes_reviewed}</span><span>Jawaban kelompok: {groupLabel(l.group_status)}</span><span>Refleksi pribadi: {l.reflection_filled?(l.reflection_reviewed?"Sudah ditinjau":"Sudah diisi"):"Belum diisi"}</span></div>)}</div>
+ <div className="student-lkpd-summary">{s.lkpd.map(l=><div key={l.topic}><strong>{l.title??("LKPD "+(l.topic+1))}</strong><span>Catatan pribadi: {l.notes_filled}/5 langkah · ditinjau {l.notes_reviewed}</span><span>Jawaban kelompok: {groupLabel(l.group_status)}</span><span>Refleksi pribadi: {l.reflection_filled?(l.reflection_reviewed?"Sudah ditinjau":"Sudah diisi"):"Belum diisi"}</span></div>)}</div>
  <Link className="button primary full-width" href={(user?.role==="admin"?"/admin/laporan/siswa/":"/guru/tinjauan/")+s.id+"?kelas="+activeClass}>Lihat detail murid <FriendlyIcon name="arrow" size={22}/></Link></article>)}</div>
  </>}
  </div>;
@@ -38,7 +38,7 @@ export function StudentReviewDetail({studentId,classroomId}:{studentId:number;cl
  const query=useSearchParams();
  const {activeClass,user}=useSession();const classId=classroomId??activeClass;
  const [data,setData]=useState<Detail|null>(null),[topic,setTopic]=useState("0"),[loading,setLoading]=useState(true),[error,setError]=useState(""),[revision,setRevision]=useState(0);
- useEffect(()=>{const meeting=Number(query.get("pertemuan"));setTopic(Number.isInteger(meeting)&&meeting>=1&&meeting<=4?String(meeting-1):"0");},[query,studentId,classId]);
+ useEffect(()=>{const meeting=Number(query.get("pertemuan"));setTopic(Number.isInteger(meeting)&&meeting>=1?String(meeting-1):"0");},[query,studentId,classId]);
  useEffect(()=>{let alive=true;const controller=new AbortController();if(!classId){setLoading(false);return;}setLoading(true);setError("");apiRequest<{data:Detail}>("/student-reviews/"+studentId+"?classroom_id="+classId,{signal:controller.signal}).then(r=>{if(alive){setData(r.data);setError("");}}).catch(e=>{if(alive)setError(errorMessage(e));}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;controller.abort();};},[studentId,classId,revision]);
  const reload=async()=>{setRevision(v=>v+1);};
  const saveNote=(saved:SavedNoteReview)=>setData(current=>current?{...current,notes:current.notes.map(note=>note.id===saved.id?{...note,feedback:saved.feedback,reviewed_at:saved.reviewed_at}:note)}:current);

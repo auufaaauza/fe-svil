@@ -3,88 +3,24 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiRequest, loadPages } from "../lib/api";
-import { lessons } from "../lib/learning";
+import { ReflectionWorkspace } from "./reflection-workspace";
+import { WordwallGames } from "./wordwall-games";
+import { WorkForm } from "./lkpd-work-form";
+export { WorkForm } from "./lkpd-work-form";
+import { useUnsavedChanges, confirmLeave } from "../lib/unsaved-changes";
+import type { LearningModule } from "./lkpd-library";
 import { useSession, type Account } from "./session-provider";
 import { FriendlyIcon } from "./friendly-icon";
 import { ThemeSelect } from "./theme-select";
 import { QuestionVisual } from "./question-visual";
 
-import { YouTubePlayer, QuestionMediaVisual, type QuestionMediaField } from "./learning-media";
 type Group = { id: number; classroom_id: number; name: string; users: { id: number; name: string }[] };
-type Work = { id: number; version: number; topic: number; answers: Record<string,string>; status: string; feedback: string | null; product_value: number | null; presentation_value: number | null; product_scores: Record<string,number> | null; presentation_scores: Record<string,number> | null; pages_submitted:number;pages_total:number;page_submissions:Record<string,{submitted_at:string;review_status:string;feedback:string|null}> };
-type WorkBundle = { module: { videoId?:string|null; videoCaption?:string|null; title: string; instructions: string; version: number }; data: Work | null; fields: QuestionMediaField[]; guidance?: Record<string,Record<string,{label:string;levels:Record<string,string>}>>; rubrics: { product: Record<string,string>; presentation: Record<string,string> } };
 type Journal = { id: number; occurred_on: string; activity: string; evidence: string; obstacle: string | null; plan_version: number };
 type Plan = { id: number; version: number; title: string; start_date: string; location: string; indicator: string; steps: string; responsibilities: string; evidence_method: string; verified_at: string | null; teacher_feedback: string | null; journals: Journal[] };
-const statusLabels: Record<string,string> = { draft: "Masih disusun", partially_submitted: "Sebagian lembar terkirim", submitted: "Semua lembar terkirim", needs_revision: "Yuk, perbaiki bersama", reviewed: "Sudah ditinjau guru" };
 const messageOf = (cause: unknown) => cause instanceof Error ? cause.message : "Belum berhasil. Coba lagi, ya.";
 
-export function WorkForm({ group, topic, staff }: { group: Group; topic: number; staff: boolean }) {
-  const query=useSearchParams();
-  const requestedPage=Number(query.get("lembar"));
-  const [fieldPage, setFieldPage] = useState(Number.isInteger(requestedPage)&&requestedPage>=1?requestedPage-1:0);
-  const panel=useRef<HTMLElement>(null);
-  const scrollToStart=()=>requestAnimationFrame(()=>{panel.current?.scrollIntoView({block:"start",behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});});
-  const [bundle, setBundle] = useState<WorkBundle | null>(null);
-  const [answers, setAnswers] = useState<Record<string,string>>({});
-  const [feedback, setFeedback] = useState("");
-  const [rubric, setRubric] = useState(false);
-  const [scores, setScores] = useState<Record<string,string>>({});
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const [reload, setReload] = useState(0);
-  useEffect(()=>{setFieldPage(Number.isInteger(requestedPage)&&requestedPage>=1?requestedPage-1:0);},[requestedPage]);
-  const pageReview=bundle?.data?.page_submissions?.[String(fieldPage)];
-  const savedFeedback=pageReview?.feedback??bundle?.data?.feedback??"";
-  useEffect(()=>{setFeedback(savedFeedback);},[savedFeedback,fieldPage]);
-  useEffect(()=>{if(bundle&&fieldPage>=Math.ceil(bundle.fields.length/4))setFieldPage(0);},[bundle,fieldPage]);
-  useEffect(() => {
-    let active = true;
-    apiRequest<WorkBundle>(`/groups/${group.id}/work/${topic}`).then(result => {
-      if (!active) return;
-      setBundle(result); setAnswers(result.data?.answers ?? {}); setError("");
-      setRubric(Boolean(result.data?.product_scores));
-      setScores(Object.fromEntries([...Object.entries(result.data?.product_scores ?? {}).map(([k,v]) => [`product.${k}`,String(v)]), ...Object.entries(result.data?.presentation_scores ?? {}).map(([k,v]) => [`presentation.${k}`,String(v)])]));
-    }).catch(cause => { if (active) setError(messageOf(cause)); });
-    return () => { active = false; };
-  }, [group.id,topic,reload]);
-  const save = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); setBusy(true); setError(""); setMessage("");
-    const status = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value ?? "draft";
-    const currentFields=bundle!.fields.slice(fieldPage*4,fieldPage*4+4);
-    if (status === "submitted") { const missing = currentFields.find(f => !answers[f.key]?.trim()); if (missing) { setError("Lengkapi pertanyaan pada lembar ini sebelum mengirim, ya."); document.getElementById("work-"+missing.key)?.focus(); setBusy(false); return; } }
-    try {
-      const result = await apiRequest<{ data: Work }>(`/groups/${group.id}/work/${topic}`, { method: "PUT", body: JSON.stringify({ version: bundle?.data?.version ?? 0, status, page:fieldPage, answers:Object.fromEntries(currentFields.map(field=>[field.key,answers[field.key]??""])) }), successMessage: status === "submitted" ? `Lembar ${fieldPage+1} berhasil dikirim ke guru.` : `Draf lembar ${fieldPage+1} berhasil disimpan.`, notifyError: true });
-      setBundle(previous => previous ? { ...previous, data: result.data } : previous);
-      setMessage(status === "submitted" ? `Lembar ${fieldPage+1} sudah dikirim. Terima kasih sudah bekerja sama!` : `Draf lembar ${fieldPage+1} tersimpan. Kamu bisa lanjut ke lembar berikutnya.`);
-      if(status==="submitted"&&(fieldPage+1)*4<bundle!.fields.length)setFieldPage(value=>value+1);
-      scrollToStart();
-    } catch (cause) { setError(messageOf(cause)); } finally { setBusy(false); }
-  };
-  const review = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); if (!bundle?.data) return; setBusy(true); setError(""); setMessage("");
-    const status = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value ?? "reviewed";
-    const body: Record<string,unknown> = { version: bundle.data.version, status, feedback, page:fieldPage, product_scores: null, presentation_scores: null };
-    if (rubric && topic === 3) for (const name of ["product","presentation"] as const) body[name+"_scores"] = Object.fromEntries(Object.keys(bundle.rubrics[name]).map(key => [key,Number(scores[name+"."+key])]));
-    try {
-      const result = await apiRequest<{ data: Work }>(`/group-work/${bundle.data.id}/review`, { method: "PUT", body: JSON.stringify(body), successMessage: "Tinjauan LKPD berhasil disimpan.", notifyError: true });
-      setBundle({ ...bundle, data: result.data }); setMessage("Tinjauan dan rubrik tersimpan. Riwayat jawaban tetap dipertahankan.");
-    } catch (cause) { setError(messageOf(cause)); } finally { setBusy(false); }
-  };
-  if (!bundle) return <section className="panel"><p role="status">{error || "Menyiapkan LKPD kelompokmu…"}</p></section>;
-  return <section className="panel work-panel" ref={panel}><div className="section-heading"><div><p className="eyebrow">LKPD {topic+1} · {group.name.toUpperCase()}</p><h2>{bundle.module.title}</h2></div><span className="soft-badge">{statusLabels[bundle.data?.status ?? "draft"]}</span></div>
-    <YouTubePlayer videoId={bundle.module.videoId} title={bundle.module.title} caption={bundle.module.videoCaption}/><p className="helper">{bundle.module.instructions}</p><p className="helper">Diskusikan bersama kelompok. Setiap lembar bisa disimpan dan dikirim sendiri. Refleksi perasaan tetap ditulis masing-masing di Ceritaku.</p><p className="work-sheet-progress"><FriendlyIcon name="check" size={24}/>{bundle.data?.pages_submitted??0} dari {Math.ceil(bundle.fields.length/4)} lembar sudah dikirim · Lembar ini: {pageReview?(pageReview.review_status==="reviewed"?"sudah ditinjau":pageReview.review_status==="needs_revision"?"perlu perbaikan":"sudah dikirim"):"belum dikirim"}</p>
-    {error && <div className="form-error" role="alert">{error}<button type="button" className="text-button" onClick={() => { setError(""); setReload(value => value+1); }}>Ambil versi terbaru</button></div>}{message && <p className="notice" role="status">{message}</p>}
-    <div className="work-pagination"><button type="button" className="button secondary" disabled={busy || fieldPage===0} onClick={() => {setFieldPage(p=>p-1);scrollToStart();}}>Sebelumnya</button><span>Lembar {fieldPage+1} dari {Math.ceil(bundle.fields.length/4)}</span><button type="button" className="button secondary" disabled={busy || (fieldPage+1)*4>=bundle.fields.length} onClick={() => {setFieldPage(p=>p+1);scrollToStart();}}>Berikutnya</button></div>
-    <form onSubmit={save}><fieldset disabled={busy} className="work-fields">{bundle.fields.slice(fieldPage*4,fieldPage*4+4).map(field => <section className="work-question" key={field.key}><label className="field-label work-question-title" htmlFor={`work-${field.key}`}>{field.label}</label><p className="helper">{field.hint}</p>{staff && field.source && <small className="source-reference">{field.source}</small>}<QuestionMediaVisual field={field} topic={topic}/><textarea id={`work-${field.key}`} rows={4} maxLength={8000} readOnly={staff} value={answers[field.key] ?? ""} onChange={e => setAnswers(previous => ({ ...previous,[field.key]: e.target.value }))} placeholder={staff ? "Belum ada jawaban kelompok" : "Tulis hasil diskusi kelompokmu di sini…"}/></section>)}
-    {!staff && <div className="form-actions"><button className="button secondary" value="draft">Simpan draf</button><button className="button primary" value="submitted">Kirim lembar {fieldPage+1} <FriendlyIcon name="arrow" size={23}/></button></div>}</fieldset></form>
-    {(pageReview?.feedback||bundle.data?.feedback) && <div className="teacher-feedback"><FriendlyIcon name="heart" size={32}/><div><strong>Pesan dari guru</strong><p>{pageReview?.feedback||bundle.data?.feedback}</p></div></div>}
-    {(bundle.data?.product_value != null || bundle.data?.presentation_value != null) && <div className="work-outcomes"><div>Nilai produk<strong>{bundle.data.product_value ?? "Belum dinilai"}</strong></div><div>Nilai presentasi<strong>{bundle.data.presentation_value ?? "Belum dinilai"}</strong></div></div>}
-    {staff && bundle.data && pageReview && <form className="review-box" onSubmit={review}><h3>Tinjauan guru</h3><label className="field-label" htmlFor="work-feedback">Apresiasi dan langkah perbaikan</label><textarea id="work-feedback" required maxLength={3000} rows={3} value={feedback} onChange={e => setFeedback(e.target.value)}/>{topic === 3 && bundle.data.pages_submitted===Math.ceil(bundle.fields.length/4) && <><label className="checkbox-label"><input type="checkbox" checked={rubric} onChange={e => setRubric(e.target.checked)}/> Sertakan rubrik produk dan presentasi</label>{rubric && <div className="rubric-grid">{(["product","presentation"] as const).map(name => <fieldset key={name}><legend>{name === "product" ? "Produk · maksimum 16" : "Presentasi · maksimum 8"}</legend>{Object.entries(bundle.rubrics[name]).map(([key,label]) => <label className="score-field" key={key}><span>{label}</span><input type="number" min={1} max={4} step={1} required value={scores[name+"."+key] ?? ""} aria-label={`${name}: ${label}`} onChange={e => setScores(previous => ({ ...previous,[name+"."+key]:e.target.value }))}/><small className="rubric-descriptor">{bundle.guidance?.[name]?.[key]?.levels[scores[name+"."+key]] ?? "Pilih skor 1–4 untuk melihat pedoman RPPM."}</small></label>)}</fieldset>)}</div>}</>}<div className="form-actions"><button className="button secondary" value="needs_revision" disabled={busy}>Minta perbaikan</button><button className="button primary" value="reviewed" disabled={busy}>Simpan tinjauan</button></div></form>}
-  </section>;
-}
 
-function ActionForm({ group, staff }: { group: Group; staff: boolean }) {
+export function ActionForm({ group, staff }: { group: Group; staff: boolean }) {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
   const [fields, setFields] = useState<Record<string,string>>({});
@@ -100,7 +36,7 @@ function ActionForm({ group, staff }: { group: Group; staff: boolean }) {
   };
   useEffect(() => {
     let active = true;
-    apiRequest<{ data: Plan | null }>(`/groups/${group.id}/action`).then(response => { if (active) setPlanData(response.data); }).catch(cause => { if (active) setError(messageOf(cause)); }).finally(() => { if (active) setLoading(false); });
+    apiRequest<{ data: Plan | null }>(`/groups/${group.id}/action`).then(async response => { if(!active)return;setPlanData(response.data);if(!response.data&&!staff){try{const work=await apiRequest<{data:{answers:Record<string,string>}|null}>(`/groups/${group.id}/work/3`);if(!active)return;const a=work.data?.answers??{};setFields(current=>({...current,title:a.rencana_1??"",start_date:/^\d{4}-\d{2}-\d{2}$/.test(a.rencana_2??"")?a.rencana_2:"",location:a.rencana_3??"",responsibilities:a.rencana_4??"",steps:a.rencana_6??"",indicator:a.rencana_7??"",evidence_method:a.rencana_8??""}));}catch{ /* Existing action plans remain available when no LKPD 4 draft exists. */ }}}).catch(cause => { if (active) setError(messageOf(cause)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [group.id]);
   const savePlan = async (event: FormEvent) => {
@@ -121,6 +57,8 @@ function ActionForm({ group, staff }: { group: Group; staff: boolean }) {
     try { const response = await apiRequest<{ data: Plan }>(`/actions/${plan.id}/verify`,{ method:"PUT",body:JSON.stringify({ feedback,version:plan.version }) }); setPlanData(response.data); setMessage("Bukti pelaksanaan telah diverifikasi."); }
     catch (cause) { setError(messageOf(cause)); } finally { setBusy(false); }
   };
+  const planDirty=!staff&&Object.entries(fields).some(([key,value])=>value!==String(plan?.[key as keyof Plan]??"").slice(0,key==="start_date"?10:undefined));
+  useUnsavedChanges(planDirty||Boolean(journal.activity||journal.evidence||journal.obstacle));
   if (loading) return <section className="panel" role="status">Menyiapkan ruang aksi…</section>;
   const labels: Record<string,string> = { title:"Nama aksi kelompok",start_date:"Mulai kapan?",location:"Di mana?",indicator:"Apa tanda bahwa aksi berhasil?",steps:"Apa langkah aman yang akan dilakukan?",responsibilities:"Bagaimana pembagian tugasnya?",evidence_method:"Bagaimana kalian mencatat buktinya?" };
   return <section className="panel action-panel"><div className="section-heading"><div><p className="eyebrow">AKSI CINTA INDONESIA</p><h2>Dari rencana menjadi kebaikan.</h2></div><span className="soft-badge">{plan?.verified_at ? "Diverifikasi guru" : plan?.journals.length ? "Sudah ada jurnal" : "Rencana aksi"}</span></div><QuestionVisual topic={3} phase={4}/>{error && <p className="form-error" role="alert">{error}</p>}{message && <p className="notice" role="status">{message}</p>}
@@ -132,7 +70,7 @@ function ActionForm({ group, staff }: { group: Group; staff: boolean }) {
   </section>;
 }
 
-export function GroupWorkspace({ actionsOnly = false }: { actionsOnly?: boolean }) {
+export function GroupWorkspace({ actionsOnly = false, membershipRevision = 0 }: { actionsOnly?: boolean; membershipRevision?: number }) {
   const { user, activeClass, classrooms } = useSession();
   const staff = user?.role !== "student";
   const [groups, setGroups] = useState<Group[]>([]);
@@ -140,15 +78,24 @@ export function GroupWorkspace({ actionsOnly = false }: { actionsOnly?: boolean 
   const [selectedId, setSelectedId] = useState("");
   const query=useSearchParams();
   const meeting=Number(query.get("pertemuan"));
-  const [topic, setTopic] = useState(Number.isInteger(meeting)&&meeting>=1&&meeting<=4?meeting-1:0);
-  useEffect(()=>{if(Number.isInteger(meeting)&&meeting>=1&&meeting<=4)setTopic(meeting-1);},[meeting]);
+  const [topic, setTopic] = useState(Number.isInteger(meeting)&&meeting>=1?meeting-1:0);
+  const [modules, setModules] = useState<LearningModule[]>([]);
+  const [modulesError, setModulesError] = useState("");
+  const [reload, setReload] = useState(0);
+  useEffect(()=>{if(!activeClass)return;let alive=true;loadPages<LearningModule>("/learning-modules?classroom_id="+activeClass).then(rows=>{if(!alive)return;setModules(rows);const active=classrooms.find(c=>c.id===activeClass)?.activeLkpdId;const chosen=rows.find(m=>m.topic===meeting-1)??rows.find(m=>m.id===active)??rows[0];if(chosen)setTopic(chosen.topic);setModulesError("");}).catch(e=>{if(alive)setModulesError(messageOf(e));});return()=>{alive=false;};},[activeClass,staff,meeting,classrooms,reload]);
+  useEffect(()=>{if(Number.isInteger(meeting)&&meeting>=1)setTopic(meeting-1);},[meeting]);
   const [tab, setTab] = useState(actionsOnly ? "action" : "work");
   const [name, setName] = useState("");
   const [studentIds, setStudentIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [reload, setReload] = useState(0);
+  useEffect(()=>{
+    if(!membershipRevision||!staff||!activeClass)return;
+    let alive=true;
+    loadPages<Account>(`/classrooms/${activeClass}/members`,undefined,{maxAgeMs:30000}).then(rows=>{if(alive)setMembers(rows.filter(row=>row.role==="student"));}).catch(cause=>{if(alive)setError(messageOf(cause));});
+    return()=>{alive=false;};
+  },[membershipRevision,staff,activeClass]);
   useEffect(() => {
     let active = true;
     if (!activeClass) return;
@@ -171,7 +118,9 @@ export function GroupWorkspace({ actionsOnly = false }: { actionsOnly?: boolean 
   return <div className="group-workspace">{error && <p className="form-error" role="alert">{error}</p>}
     {staff && <section className="panel"><div className="section-heading"><h2>Kelompok dan kelas</h2><FriendlyIcon name="people" size={43}/></div>{classroom?.joinCode && <div className="class-invitation"><strong>Kode daftar siswa · {classroom.name}</strong><code>{classroom.joinCode}</code><p>Bagikan hanya kepada siswa kelas ini.</p></div>}<form onSubmit={createGroup} className="group-create-form"><label className="field-label" htmlFor="group-name">Nama kelompok baru</label><input id="group-name" value={name} onChange={e => setName(e.target.value)} required maxLength={80}/><fieldset className="group-members"><legend>Pilih anggota · maksimum 10 siswa</legend>{available.map(member => <label className="checkbox-label" key={member.id}><input type="checkbox" checked={studentIds.includes(member.id)} onChange={e => setStudentIds(previous => e.target.checked ? [...previous,member.id] : previous.filter(id => id !== member.id))}/>{member.name}</label>)}{!available.length && <p className="helper">Belum ada siswa tanpa kelompok. Siswa baru dapat mendaftar memakai kode kelas.</p>}</fieldset><button className="button secondary" disabled={busy || !studentIds.length || studentIds.length > 10}>Buat kelompok <FriendlyIcon name="plus" size={24}/></button></form></section>}
     {loading ? <p role="status">Memuat kelompok…</p> : !group ? <section className="panel"><FriendlyIcon name="people" size={60}/><h2>Belajar bersama, saling membantu.</h2><p>{staff ? "Buat kelompok pertama setelah siswa terdaftar di kelas." : "Gurumu akan menyiapkan kelompok. Kamu tetap bisa membaca materi dan menulis refleksi pribadi."}</p></section> : <><section className="panel group-overview"><div><span className="soft-badge">KELOMPOK BELAJAR</span><h2>{group.name}</h2><p>{group.users.map(member => member.name).join(" · ")}</p></div>{staff && <ThemeSelect label="Pilih kelompok" value={group.id} options={groups.map(g => ({ value:String(g.id),label:g.name }))} onChange={setSelectedId}/>}</section>
-      {!actionsOnly && <div className="workspace-toolbar"><div className="segmented-control"><button className={tab === "work" ? "selected" : ""} onClick={() => setTab("work")}>LKPD kelompok</button><button className={tab === "action" ? "selected" : ""} onClick={() => setTab("action")}>Aksi nyata</button></div>{tab === "work" && <ThemeSelect label="Pertemuan LKPD" value={topic} onChange={value => setTopic(Number(value))} options={lessons.map((l,i) => ({ value:String(i),label:`LKPD ${i+1} · ${l.title}` }))}/>}</div>}
-      {actionsOnly || tab === "action" ? <ActionForm key={`action-${group.id}`} group={group} staff={staff}/> : <WorkForm key={`work-${group.id}-${topic}`} group={group} topic={topic} staff={staff}/>}</>}
+      {modulesError&&<p className="form-error" role="alert">{modulesError}<button className="text-button" onClick={()=>setReload(v=>v+1)}>Coba lagi</button></p>}
+      {!actionsOnly&&modules.length>0&&<div className="workspace-toolbar"><ThemeSelect label="LKPD kelasmu" value={topic} onChange={async value=>{if(await confirmLeave()){setTopic(Number(value));setTab("work");}}} options={modules.map(m=>({value:String(m.topic),label:m.title+(m.status==="draft"?" · Draf":"")}))}/>{staff&&<div className="segmented-control"><button className={tab==="work"?"selected":""} onClick={async()=>{if(await confirmLeave())setTab("work");}}>Jawaban LKPD</button><button className={tab==="action"?"selected":""} onClick={async()=>{if(await confirmLeave())setTab("action");}}>Rencana dan jurnal aksi</button></div>}</div>}
+      {actionsOnly||tab==="action"?<ActionForm key={`action-${group.id}`} group={group} staff={staff}/>:modules.length?<><WorkForm key={`work-${group.id}-${topic}`} group={group} topic={topic} staff={staff}/>{!staff&&[1,2,3].includes(topic)&&<WordwallGames topic={topic}/>}{!staff&&topic===0&&<details className="panel"><summary>Refleksi Hati saya</summary><p>Bagian ini dijawab oleh masing-masing siswa dan disimpan terpisah dari jawaban kelompok.</p><ReflectionWorkspace topicOnly={0}/></details>}{topic===3&&<details className="panel"><summary>Rencana dan jurnal pelaksanaan aksi</summary><ActionForm group={group} staff={staff}/></details>}</>:!modulesError&&<section className="panel"><h2>Belum ada LKPD untuk kelas ini</h2><p>Gurumu akan menyiapkan LKPD. Kamu tetap dapat membuka Materi dan Tugas.</p></section>}</>}
+
   </div>;
 }

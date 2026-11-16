@@ -14,10 +14,10 @@ export function useWorkspaceLists<T extends Record<string, unknown>>(path: strin
  useEffect(()=>{let alive=true;setRows(null);setError("");setLoading(Boolean(path));if(path)loadWorkspaceLists<T>(path,sections).then(result=>{if(alive)setRows(result);}).catch(e=>{if(alive)setError(errorMessage(e));}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[path,sections]);
  return {rows,setRows,loading,error,reload};
 }
-export function useApiRows<T>(path:string|null) {
+export function useApiRows<T>(path:string|null, revision=0) {
  const [rows,setRows]=useState<T[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState("");
  const reload=useCallback(async()=>{if(!path)return [] as T[];try {const rows=await loadPages<T>(path);setRows(rows);setError("");return rows;} catch(e) {setError(errorMessage(e));return [] as T[];}},[path]);
- useEffect(()=>{let alive=true;if(!path){setRows([]);setLoading(false);setError("");return;}setLoading(true);setRows([]);setError("");loadPages<T>(path,undefined,{maxAgeMs:30000}).then(rows=>{if(alive){setRows(rows);setError("");}}).catch(e=>{if(alive)setError(e.message);}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[path]);
+ useEffect(()=>{let alive=true;if(!path){setRows([]);setLoading(false);setError("");return;}setLoading(true);setRows([]);setError("");loadPages<T>(path,undefined,{maxAgeMs:30000}).then(rows=>{if(alive){setRows(rows);setError("");}}).catch(e=>{if(alive)setError(e.message);}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[path,revision]);
  return {rows,loading,error,reload,setRows};
 }
 export function AsyncState({loading,error,retry}:{loading:boolean;error:string;retry:()=>void}){return <>{loading && <p role="status">Memuat ruang belajar…</p>}{error && <div className="form-error" role="alert">{error}<button type="button" className="text-button" onClick={retry}>Muat lagi</button></div>}</>;}
@@ -36,8 +36,8 @@ export function LessonSelect({value,onChange,initialCourseId,classroomId,disable
  const lessons=course?.chapters?.flatMap(ch=>(ch.lessons??[]).map(l=>({...l,chapterTitle:ch.title})))??[];
  return <div className="lesson-select-grid"><div><span className="field-label">Mata pelajaran / kelas belajar</span><ThemeSelect label="Mata pelajaran" value={courseId} disabled={disabled} onChange={v=>{setCourseId(Number(v));setCourse(null);onChange(0);}} placeholder="Pilih mapel" options={courses.rows.map(c=>({value:String(c.id),label:c.title,description:c.subject+" · "+(c.classroom?.name??"")+" · "+c.semester}))}/></div><div><span className="field-label">Pertemuan tujuan</span><ThemeSelect label="Pertemuan tujuan" value={value} required={required} disabled={disabled||!courseId} onChange={v=>onChange(Number(v))} placeholder={courseId?"Pilih pertemuan":"Pilih mapel dahulu"} options={lessons.map(l=>({value:String(l.id),label:l.title,description:l.chapterTitle+" · "+statusLabel(l.status)}))}/></div>{(courses.error||error) && <p className="form-error" role="alert">{courses.error||error}</p>}{!courses.loading && !courses.rows.length && <p className="helper">Buat mapel, bab dan pertemuan melalui tab Mapel terlebih dahulu.</p>}</div>;
 }
-export function useMembers(enabled=true) {
- const {activeClass}=useSession();const list=useApiRows<Member>(enabled&&activeClass?"/classrooms/"+activeClass+"/members":null);
+export function useMembers(enabled=true, revision=0) {
+ const {activeClass}=useSession();const list=useApiRows<Member>(enabled&&activeClass?"/classrooms/"+activeClass+"/members":null,revision);
  return {...list,rows:list.rows.filter(m=>m.role==="student")};
 }
 

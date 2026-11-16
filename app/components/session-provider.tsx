@@ -4,8 +4,8 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef, ty
 import { apiRequest, clearReadCache, ApiError, initializeCsrf, loadPages, showToast } from "../lib/api";
 import type { TeacherMaterial } from "../lib/material-store";
 
-export type Account = { id: number; name: string; username: string; email: string; role: "student" | "teacher" | "admin"; schoolId: number | null; schoolName: string | null; canUseSvil?: boolean; version?:number; mustChangePassword?:boolean };
-export type Classroom = { id: number; name: string; schoolId: number; schoolName: string; academicYear: string; joinCode?: string; version?:number; archived?:boolean };
+export type Account = { id: number; name: string; username: string; email: string | null; role: "student" | "teacher" | "admin"; schoolId: number | null; schoolName: string | null; canUseSvil?: boolean; version?:number; mustChangePassword?:boolean };
+export type Classroom = { id: number; name: string; schoolId: number; schoolName: string; academicYear: string; activeLkpdId?: number | null; joinCode?: string; version?:number; archived?:boolean };
 export type RegistrationFields = { name: string; username: string; email: string; password: string; password_confirmation: string; class_code: string };
 export type LearningNote = { id: number; classroom_id: number; student_id: number; topic: number; phase: number; content: string; feedback: string | null; reviewed_at: string | null };
 type Session = {

@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarWorkspace, ProgressWorkspace } from "./calendar-progress";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "./session-provider";
 import { useMaterials } from "../lib/material-store";
@@ -10,20 +9,15 @@ import { LkpdLibrary } from "./lkpd-library";
 import { DiscussionBoard } from "./discussion-board";
 import { ThemeSelect } from "./theme-select";
 import { FriendlyIcon, type IconName } from "./friendly-icon";
-import { LearningScene } from "./learning-scene";
-import { lessons } from "../lib/learning";
 import { CourseWorkspace } from "./course-workspace";
 import { AssignmentWorkspace, GalleryWorkspace } from "./assignment-workspace";
-import { Gradebook } from "./gradebook";
-import { ResearchWorkspace } from "./research-workspace";
 import { AssessmentWorkspace } from "./assessment-workspace";
-import { GroupWorkspace } from "./group-workspace";
 
 export function ContentWorkspace() {
  const query=useSearchParams();
  const {user,classrooms,activeClass}=useSession();const materials=useMaterials();const router=useRouter();
  const base=user?.role==="admin"?"/admin/konten":"/guru/materi";
- const [tab,setTab]=useState(query.get("kegiatan")??"material"),[search,setSearch]=useState(""),[status,setStatus]=useState("all"),[subject,setSubject]=useState("all");
+ const [tab,setTab]=useState(query.get("kegiatan")??"lkpd"),[search,setSearch]=useState(""),[status,setStatus]=useState("all"),[subject,setSubject]=useState("all");
  const [classroom,setClassroom]=useState(user?.role==="admin"?"all":String(activeClass??"all"));
  const requestedTab=query.get("kegiatan");
  useEffect(()=>{if(requestedTab)setTab(requestedTab);},[requestedTab]);
@@ -40,17 +34,4 @@ export function ContentWorkspace() {
  {!filtered.length&&<div className="content-empty"><FriendlyIcon name="book" size={65}/><h3>Belum ada konten yang sesuai</h3><p>Unggah bahan pembelajaran atau sesuaikan filter.</p></div>}
  <div className="content-card-grid">{filtered.map(m=><article className="content-card" key={m.id}><div className="section-heading"><span className={"content-type-badge "+m.kind}>{m.kind==="quiz"?"Latihan":"Materi"} · {m.subject??"IPAS"}</span><span className={"status-badge "+m.status}>{m.status==="published"?"Terbit":"Draf"}</span></div><FriendlyIcon name={m.kind==="quiz"?"edit":"book"} size={49}/><h3>{m.title}</h3><p className="content-excerpt">{m.content}</p><div className="content-attribution"><span>Diunggah <strong>{m.uploadedBy?.name??"Belum tercatat"}</strong></span><span>{classrooms.find(c=>c.id===m.classroomId)?.name??"Kelas"} · Versi {m.version}</span><span>{m.topic===null?m.topicLabel||"Materi umum":"Pertemuan "+(m.topic+1)}</span><span>Diperbarui {new Date(m.updatedAt).toLocaleDateString("id-ID")}{m.updatedBy?" oleh "+m.updatedBy.name:""}</span>{m.attachment&&<span>{m.attachment.mime?.includes("presentationml")?"PowerPoint":"PDF"} · {m.attachment.name}</span>}</div><div className="form-actions"><Link className="button secondary" href={base+"/"+(m.kind==="quiz"?"latihan":"materi")+"/"+m.id}>Lihat detail</Link>{m.canEdit!==false&&<Link className="button primary" href={base+"/"+(m.kind==="quiz"?"latihan":"materi")+"/"+m.id+"?edit=1"}>Sunting <FriendlyIcon name="edit" size={20}/></Link>}</div></article>)}</div></section>}
  </div>;
-}
-
-export function StudentLearningHub({onOpenLesson,onOpenMaterial}:{onOpenLesson:(index:number)=>void;onOpenMaterial:(id:string)=>void}) {
- const query=useSearchParams();
- const {materials,activeClass,user}=useSession();const canUseSvil=user?.canUseSvil!==false;
- const [tab,setTab]=useState(query.get("kegiatan")??"material"),[search,setSearch]=useState("");
- const requestedTab=query.get("kegiatan");
- useEffect(()=>{if(requestedTab)setTab(requestedTab);},[requestedTab]);
- const contents=materials.filter(m=>m.classroomId===activeClass&&m.status==="published"&&(m.kind??"material")===tab&&m.title.toLowerCase().includes(search.toLowerCase()));
- const tabs=[["material","Baca materi","book"],["course","Kelas belajar","school"],...(canUseSvil?[["lkpd","LKPD","edit"]]:[]),["assessment","Kuis","edit"],["task","Tugasku","compass"],["discussion","Diskusi","people"],["gallery","Karya teman","sprout"],["progress","Perjalananku","heart"],["calendar","Kalender","compass"],["grades","Nilai & pesan","book"],...(canUseSvil?[["journey","Petualangan","compass"]]:[]),...(materials.some(m=>m.kind==="quiz")?[["quiz","Latihan singkat","edit"]]:[])];
- return <div className="student-learning-hub"><div className="content-tabs" aria-label="Pilih kegiatan belajar">{tabs.map(([key,label,icon])=><button key={key} aria-pressed={tab===key} className={tab===key?"selected":""} onClick={()=>setTab(key)}><FriendlyIcon name={icon as IconName} size={30}/><span>{label}</span></button>)}</div>
- {tab==="lkpd"&&canUseSvil?<GroupWorkspace/>:tab==="course"?<CourseWorkspace/>:tab==="assessment"?<AssessmentWorkspace/>:tab==="task"?<AssignmentWorkspace/>:tab==="gallery"?<GalleryWorkspace/>:tab==="progress"?<ProgressWorkspace/>:tab==="grades"?<Gradebook/>:tab==="calendar"?<CalendarWorkspace/>:tab==="discussion"?<DiscussionBoard/>:tab==="journey"?<><h2>Yuk, pilih petualanganmu!</h2><div className="lesson-grid">{lessons.map((l,i)=><button className={"lesson-card "+l.color} key={l.title} onClick={()=>onOpenLesson(i)}><div className="lesson-thumbnail"><LearningScene topic={i} step={0} compact/><span className="meeting">Pertemuan {i+1}</span></div><div className="lesson-card-copy"><p className="card-label">{l.label}</p><h3>{l.short}</h3><p className="card-desc">{l.desc}</p><div className="card-footer"><span>Belajar dan peduli bersama</span><span className="card-go"><FriendlyIcon name="arrow" size={22}/></span></div></div></button>)}</div></>:<section className="panel"><div className="section-heading"><div><p className="eyebrow">DARI GURUMU UNTUKMU</p><h2>{tab==="quiz"?"Ayo, coba yang kamu pelajari!":"Yuk, buka bahan belajarmu!"}</h2><p>Pilih bahan. Kamu bisa membaca PDF atau membuka slide langsung di sini.</p></div><FriendlyIcon name="book" size={48}/></div><label className="search-field"><FriendlyIcon name="search" size={24}/><input aria-label="Cari bahan belajar" placeholder="Cari judul…" value={search} onChange={e=>setSearch(e.target.value)}/></label>{!contents.length&&<div className="library-empty"><FriendlyIcon name="book" size={60}/><p>Belum ada bahan yang cocok. Coba lihat kegiatan pada Kelas belajar atau tanyakan kepada gurumu, ya.</p></div>}<div className="extra-material-grid">{contents.map(m=><button className="extra-material" key={m.id} onClick={()=>onOpenMaterial(m.id)}><FriendlyIcon name={tab==="quiz"?"edit":"book"} size={44}/><div><strong>{m.title}</strong><small>Dari {m.uploadedBy?.name??"gurumu"} · {m.subject??"IPAS"}{m.attachment?" · "+(m.attachment.name.toLowerCase().endsWith(".pptx")?"Slide PowerPoint":"Baca PDF"):""}</small></div><FriendlyIcon name="arrow" size={24}/></button>)}</div></section>}
- <ResearchWorkspace/></div>;
 }

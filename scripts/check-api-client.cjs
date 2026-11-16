@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const code = ts.transpileModule(fs.readFileSync(path.join(__dirname, "../app/lib/api.ts"), "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText;
+const csvCode = ts.transpileModule(fs.readFileSync(path.join(__dirname, "../app/lib/csv.ts"), "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText;
 function client(fetch) {
   const module = { exports: {} };
   const events = [];
@@ -12,6 +13,15 @@ function client(fetch) {
   vm.runInNewContext(code, { exports: module.exports, fetch, Headers, Response, Blob, Event, CustomEvent, DOMException, structuredClone, setTimeout: callback => setTimeout(callback, 0), clearTimeout, document: { cookie: "XSRF-TOKEN=abc%3Ddef" }, window: { dispatchEvent: event => {events.push(event.type);if(event.type==="svil-toast")toasts.push(event.detail);} } });
   return { api: module.exports, events, toasts };
 }
+
+test("generated account CSV keeps empty emails, quotes names, and neutralizes spreadsheet formulas", () => {
+  const exported = {};
+  vm.runInNewContext(csvCode, { exports: exported });
+  const csv = exported.csvText(["name", "username", "email", "initial_password"], [['Nama, "Lengkap"', "nama", null, "siswa123"], [" =HYPERLINK(1)", "nama2", "", "siswa123"]]);
+  assert.ok(csv.startsWith('\uFEFF"name","username","email","initial_password"\r\n'));
+  assert.ok(csv.includes('"Nama, ""Lengkap""","nama","","siswa123"'));
+  assert.ok(csv.includes('"\' =HYPERLINK(1)"'));
+});
 test("writes include session cookies and decoded CSRF without adding JSON headers to files", async () => {
   let captured;
   const { api } = client(async (_url, options) => { captured = options; return Response.json({ data: { id: 1 } }); });

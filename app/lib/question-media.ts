@@ -13,6 +13,8 @@ export function parseQuestionVideo(input?: string | null): QuestionVideoMedia | 
     }
     const tiktok = ["tiktok.com", "www.tiktok.com", "m.tiktok.com"].includes(host) && url.pathname.match(/\/(?:@[^/]+\/video|player\/v1)\/(\d{12,25})(?:\/|$)/);
     if (tiktok) return { provider: "tiktok", id: tiktok[1], url: "https://www.tiktok.com" + url.pathname };
+    const shortTikTok = ["vt.tiktok.com", "vm.tiktok.com"].includes(host) ? /^\/[A-Za-z0-9_-]+\/?$/.test(url.pathname) : ["tiktok.com", "www.tiktok.com", "m.tiktok.com"].includes(host) && /^\/t\/[A-Za-z0-9_-]+\/?$/.test(url.pathname);
+    if (shortTikTok) return { provider: "tiktok", url: url.href };
     return { provider: /\.(mp4|webm)$/i.test(url.pathname) ? "file" : "link", url: url.href };
   } catch {
     return null;

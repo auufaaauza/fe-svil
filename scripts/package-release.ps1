@@ -20,7 +20,7 @@ try {
     $backend=Join-Path $stageRoot 'be-svill';$frontend=Join-Path $stageRoot 'fe-svill'
     $null=New-Item -ItemType Directory -Path $backend,$frontend -Force
     foreach($folder in @('app','config','database','public','routes')) {
-        Get-ChildItem -LiteralPath (Join-Path $workspaceRoot ('be-svill/'+$folder)) -Recurse -File | Where-Object {$_.Extension -ne '.sqlite'} | ForEach-Object {
+        Get-ChildItem -LiteralPath (Join-Path $workspaceRoot ('be-svill/'+$folder)) -Recurse -File | Where-Object {$_.Extension -ne '.sqlite' -and $_.FullName -notmatch '[\\/]database[\\/]factories[\\/]'} | ForEach-Object {
             $relative=[IO.Path]::GetRelativePath((Join-Path $workspaceRoot 'be-svill'),$_.FullName)
             Copy-ReleaseFile $_.FullName (Join-Path $backend $relative)
         }
@@ -41,7 +41,7 @@ try {
             Copy-ReleaseFile $_.FullName (Join-Path $frontend $relative)
         }
     }
-    foreach($file in @('package.json','package-lock.json','next.config.ts','eslint.config.mjs','postcss.config.mjs','tsconfig.json','next-env.d.ts','README.md','.gitignore','.env.production.example','scripts/check-api-client.cjs','scripts/check-navigation.cjs')) { $source=Join-Path $workspaceRoot ('fe-svill/'+$file);if(Test-Path -LiteralPath $source){Copy-ReleaseFile $source (Join-Path $frontend $file)} }
+    foreach($file in @('package.json','package-lock.json','next.config.ts','eslint.config.mjs','postcss.config.mjs','tsconfig.json','next-env.d.ts','README.md','.gitignore','.vercelignore','.env.production.example')) { $source=Join-Path $workspaceRoot ('fe-svill/'+$file);if(Test-Path -LiteralPath $source){Copy-ReleaseFile $source (Join-Path $frontend $file)} }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $outputs=@()
     foreach($name in @('be-svill','fe-svill')) {
