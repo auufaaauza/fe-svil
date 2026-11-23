@@ -73,14 +73,14 @@ function AttemptsReview() {
   const attempt = attempts.find(a => a.id === selected);
   const retry = () => reload().catch(e => setRetryError(e.message));
   return <div className="workshop-layout assessment-review-layout"><section className="panel">
-    <div className="section-heading"><h2>Jawaban latihan siswa</h2><FriendlyIcon name="book" size={40}/></div>
+    <div className="section-heading"><h2>Jawaban latihan siswa</h2><FriendlyIcon name="practice" size={40}/></div>
     <p>Jawaban terbuka dan pilihan tanpa kunci dapat diberi tinjauan. Cerita pribadi boleh mendapat umpan balik tanpa label benar atau salah.</p>
     <LoadState loading={loading} error={error || retryError} retry={retry}/>
     {!loading && !error && !attempts.length && <div className="soft-note">Belum ada jawaban latihan pada kelas ini.</div>}
     <div className="material-library">{attempts.map(a => <button type="button" className={"library-item "+(selected === a.id ? "selected" : "")} key={a.id} onClick={() => setSelected(a.id)}>
       <strong>{members.rows.find(m=>m.id===a.student_id)?.name??"P-"+a.student_id} · {a.material.title}</strong><small>{a.reviewed_at ? "Sudah ditinjau guru" : a.correct !== null ? "Dinilai otomatis" : "Menunggu tinjauan"}</small>
     </button>)}</div>
-  </section><aside className="panel">{attempt ? <AttemptReviewForm key={attempt.id+"-"+attempt.review_version} attempt={attempt} onSaved={reload}/> : <div className="library-empty"><FriendlyIcon name="edit" size={55}/><p>Pilih jawaban yang ingin ditinjau.</p></div>}</aside></div>;
+  </section><aside className="panel">{attempt ? <AttemptReviewForm key={attempt.id+"-"+attempt.review_version} attempt={attempt} onSaved={reload}/> : <div className="library-empty"><FriendlyIcon name="practice" size={55}/><p>Pilih jawaban yang ingin ditinjau.</p></div>}</aside></div>;
 }
 function AttemptReviewForm({ attempt, onSaved }: { attempt: Attempt; onSaved: () => Promise<void> }) {
   const q = attempt.question_snapshot;
@@ -127,7 +127,7 @@ function ObservationWorkspace() {
   }, [activeClass]);
   const existing = rows.find(r => r.classroom_id === activeClass && r.student_id === Number(studentId) && r.topic === Number(topic) && r.occasion === Number(occasion));
   if (!activeClass) return <section className="panel"><p className="soft-note">Siapkan kelas terlebih dahulu melalui admin.</p></section>;
-  return <section className="panel"><div className="section-heading"><h2>Observasi proses belajar</h2><FriendlyIcon name="people" size={40}/></div>
+  return <section className="panel"><div className="section-heading"><h2>Observasi proses belajar</h2><FriendlyIcon name="observation" size={40}/></div>
     <p>Catat perilaku yang benar-benar diamati pada dua kesempatan berbeda. Empat aspek diberi skor 1–4, disertai bukti dan saran. Nilai observasi terpisah dari produk dan presentasi.</p>
     <LoadState loading={loading} error={error || memberError} retry={() => reload().catch(e => setMemberError(e.message))}/>
     <div className="observation-selection">
@@ -183,7 +183,7 @@ export function StudentFeedback({ materialId, generation = 0, reflections = [], 
   const reviewedReflections = reflections.filter(row => row.classroom_id === activeClass && row.feedback);
   const loading = attempts.loading || observations.loading || reflectionsLoading;
   const feedbackError = attempts.error || observations.error || reflectionsError || retryError;
-  return <section className="panel student-feedback" id={materialId ? undefined : "teacher-messages"}><div className="section-heading"><div><p className="eyebrow">BELAJAR DAN TUMBUH</p><h2>Pesan dari gurumu</h2></div><FriendlyIcon name="heart" size={45}/></div>
+  return <section className="panel student-feedback" id={materialId ? undefined : "teacher-messages"}><div className="section-heading"><div><p className="eyebrow">BELAJAR DAN TUMBUH</p><h2>Pesan dari gurumu</h2></div><FriendlyIcon name="feedback" size={45}/></div>
     <LoadState loading={loading} error={feedbackError} retry={retry}/>
     <div className="feedback-list">
     {!materialId && reviewedReflections.map(row => <article className="feedback-card reflection-feedback-card" key={"reflection-"+row.id}><div className="section-heading"><span className="soft-badge">Refleksi pribadi · Pertemuan {row.topic+1}</span><FriendlyIcon name="heart" size={30}/></div><strong>Apresiasi dan dukungan dari gurumu</strong><p className="reflection-feedback-text">{row.feedback}</p></article>)}

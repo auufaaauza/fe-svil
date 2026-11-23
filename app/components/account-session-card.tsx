@@ -33,7 +33,7 @@ export function AccountSessionCard({ beforeLeave, disabled = false }: { beforeLe
 
   return <section className="account-session-card" aria-label="Sesi akun">
     <div className="session-identity">
-      <span className="session-avatar"><FriendlyIcon name={user.role === "student" ? "compass" : "people"} size={30}/></span>
+      <span className="session-avatar"><FriendlyIcon name="account" size={30}/></span>
       <div className="session-identity-copy"><strong>{user.name}</strong><small>{role} · @{user.username}</small></div>
     </div>
     <button type="button" className="session-logout" disabled={busy || disabled} aria-busy={busy} onClick={leave}>

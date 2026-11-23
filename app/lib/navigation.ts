@@ -4,22 +4,22 @@ export type AccountRole = "student" | "teacher" | "admin";
 export type WorkspaceLink = { label: string; href: string; icon: IconName };
 export const workspaceNavigation: Record<AccountRole, WorkspaceLink[]> = {
   student: [
-    { label: "LKPD", href: "/siswa", icon: "edit" },
+    { label: "LKPD", href: "/siswa", icon: "lkpd" },
     { label: "Materi", href: "/siswa/materi", icon: "book" },
-    { label: "Tugas", href: "/siswa/tugas", icon: "compass" },
+    { label: "Tugas", href: "/siswa/tugas", icon: "task" },
     { label: "Ringkasan", href: "/siswa/ringkasan", icon: "chart" },
   ],
   teacher: [
     { label: "Beranda", href: "/guru", icon: "home" },
-    { label: "Konten kelas", href: "/guru/materi", icon: "book" },
-    { label: "Tinjauan", href: "/guru/tinjauan", icon: "edit" },
+    { label: "Konten kelas", href: "/guru/materi", icon: "content" },
+    { label: "Tinjauan", href: "/guru/tinjauan", icon: "review" },
     { label: "Laporan", href: "/guru/laporan", icon: "chart" },
     { label: "Kelasku", href: "/guru/kelas", icon: "people" },
   ],
   admin: [
     { label: "Beranda", href: "/admin", icon: "home" },
     { label: "Madrasah", href: "/admin/madrasah", icon: "school" },
-    { label: "Konten belajar", href: "/admin/konten", icon: "book" },
+    { label: "Konten belajar", href: "/admin/konten", icon: "content" },
     { label: "Laporan", href: "/admin/laporan", icon: "chart" },
   ],
 };

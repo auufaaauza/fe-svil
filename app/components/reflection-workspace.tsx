@@ -34,7 +34,7 @@ function ReflectionForm({classroomId,schema,existing,onSaved}:{classroomId:numbe
  {Object.entries(fields).map(([key,label])=><Field label={label} key={key}><textarea required rows={3} maxLength={4000} value={answers[key]??""} placeholder="Tulis dengan bahasamu sendiri, ya…" onChange={e=>{setAnswers(p=>({...p,[key]:e.target.value}));setSaved(false);}}/></Field>)}
  <button className="button primary" disabled={!classroomId}>{busy?"Menyimpan ceritamu…":"Simpan ceritaku"}<FriendlyIcon name="heart" size={24}/></button></fieldset>
  {saved&&<p className="notice" role="status">Ceritamu sudah tersimpan.</p>}{error&&<div className="form-error" role="alert">{error}<button className="text-button" type="button" onClick={()=>onSaved()}>Ambil cerita terbaru</button></div>}
- <small className="helper">{schema.reference} · Disimpan untuk akunmu dan kelasmu.</small>{existing?.feedback&&<a className="text-button reflection-message-link" href="#teacher-messages"><FriendlyIcon name="heart" size={25}/>Lihat pesan dari gurumu di bawah</a>}</form>;
+ <small className="helper">{schema.reference} · Disimpan untuk akunmu dan kelasmu.</small>{existing?.feedback&&<a className="text-button reflection-message-link" href="#teacher-messages"><FriendlyIcon name="feedback" size={25}/>Lihat pesan dari gurumu di bawah</a>}</form>;
 }
 type Followup={id:number;title:string;group:{id:number;name:string;classroom_id:number};start_date:string;followup_on:string;verified_at:string|null;records:{id:number;kind:string;occurred_on:string;content:string;source_reference:string}[]};
 export function FollowupWorkspace() {

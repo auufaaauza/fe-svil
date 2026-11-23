@@ -39,7 +39,7 @@ function ToastCard({ item, dismiss }: { item: Toast; dismiss: (id: number) => vo
 
   return <div className={`toast-card toast-${item.tone}`} role={item.tone === "error" ? "alert" : "status"} aria-atomic="true"
     onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
-    <span className="toast-icon"><FriendlyIcon name={item.tone === "success" ? "check" : item.tone === "error" ? "heart" : "sprout"} size={34}/></span>
+    <span className="toast-icon"><FriendlyIcon name={item.tone === "success" ? "check" : item.tone === "error" ? "warning" : "info"} size={34}/></span>
     <div className="toast-copy"><strong>{item.tone === "success" ? "Berhasil!" : item.tone === "error" ? "Belum berhasil" : "Kabar untukmu"}</strong><p>{item.message}</p></div>
     <button className="toast-close" type="button" onClick={() => dismiss(item.id)} aria-label="Tutup pemberitahuan"><FriendlyIcon name="close" size={20}/></button>
   </div>;

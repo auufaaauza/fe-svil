@@ -34,7 +34,7 @@ export function LkpdLibrary() {
        <small>Versi {m.version} · {m.fields.length} section · {m.updatedBy.name}</small>
        <div className="module-card-actions">
          <button className="button primary" onClick={()=>open(m.id)}><FriendlyIcon name="edit" size={22}/>Buka editor LKPD</button>
-         {activeClass&&<button className={"button secondary"+(active?" is-active":"")} disabled={busy||active||m.status!=="published"||classroom?.archived} onClick={()=>activate(m)}><FriendlyIcon name={active?"check":"compass"} size={22}/>{active?"LKPD aktif kelas ini":"Jadikan LKPD aktif"}</button>}
+         {activeClass&&<button className={"button secondary"+(active?" is-active":"")} disabled={busy||active||m.status!=="published"||classroom?.archived} onClick={()=>activate(m)}><FriendlyIcon name="check" size={22}/>{active?"LKPD aktif kelas ini":"Jadikan LKPD aktif"}</button>}
        </div>
      </div>
    </article>;
